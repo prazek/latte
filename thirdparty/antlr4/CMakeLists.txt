@@ -23,8 +23,7 @@ ExternalProject_Add(antlr4_external
         CONFIGURE_COMMAND "${CMAKE_COMMAND}" "${ANTLR4_ROOT}" "-DCMAKE_INSTALL_PREFIX=${BUILD_DIR}"
         CMAKE_CACHE_ARGS -DCMAKE_CXX_FLAGS="${CMAKE_CXX_FLAGS}" -DCMAKE_BUILD_TYPE="${CMAKE_BUILD_TYPE}"
         LOG_CONFIGURE OFF
-        LOG_BUILD OFF
-        LOG_INSTALL OFF)
+        LOG_BUILD OFF)
 
 add_library(antlr4lib IMPORTED STATIC GLOBAL)
 set_target_properties(antlr4lib PROPERTIES

@@ -19,9 +19,15 @@ if (ENABLE_SANITIZERS)
 endif()
 
 set(COMMON_INCLUDES ${PROJECT_SOURCE_DIR}/src)
+
+set(LLVM_EXTERNAL_LIT "${PROJECT_SOURCE_DIR}/thirdparty/llvm/lit/lit.py")
+add_subdirectory(thirdparty)
+
+include(thirdparty/llvm/AddLLVM.cmake)
+
 add_subdirectory(src)
 add_subdirectory(Tests)
-add_subdirectory(thirdparty)
+
 
 
 
