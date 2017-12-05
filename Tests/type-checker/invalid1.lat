@@ -1,0 +1,57 @@
+// RUN: %latte < %s | FileCheck %s
+
+void f () {
+   5 + 5;
+   5 + true;
+
+
+   int a;
+   a = 4 + 3;
+// CHECK: 8:3: error: Cannot assign expression of type 'bool' to variable of type 'int'
+   a = false;
+
+   int b = 4 - false;
+}
+
+
+void unknownVariable() {
+// CHECK:
+   c;
+
+}
+
+void operator() {
+// CHECK:
+   a + 42;
+
+   42 + true * 32;
+
+   false / 42;
+
+   true + true;
+
+   true % 12;
+}
+
+void incr() {
+    boolean p;
+    string s;
+    p++;
+    p--;
+    s++;
+    s--;
+
+}
+
+void boolOps() {
+
+    boolean a = true;
+    boolean b = false;
+
+    a && b || c;
+// CHECK:
+    a && 4;
+// CHECK:
+    "abc" || false;
+
+}

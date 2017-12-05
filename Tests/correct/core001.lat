@@ -1,4 +1,4 @@
-// RUN: %latc < %s
+// RUN: %latc < %s | FileCheck %s
 
 int main() {
 	printInt(fac(10));

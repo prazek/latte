@@ -1,6 +1,7 @@
 #include "antlr4-runtime.h"
 #include "LatteLexer.h"
 #include "LatteParser.h"
+#include "TypeChecker.h"
 #include <string>
 #include <fstream>
 
@@ -26,7 +27,7 @@ std::string parseFileName(const std::string& fullName) {
 int main(int argc, const char* argv[]) {
   if (argc != 2) {
     printf("instant language compiler\n");
-    printf("Usage: %s file.ins\n", argv[0]);
+    printf("Usage: %s file.lat\n", argv[0]);
     exit(1);
   }
 
@@ -44,5 +45,15 @@ int main(int argc, const char* argv[]) {
   tokens.fill();
 
   LatteParser parser(&tokens);
-  auto *ast = parser.program();
+  auto *program = parser.program();
+
+  std::cout << program->toStringTree() << std::endl;
+
+  Context context(fileName);
+
+  TypeChecker typeChecker(context);
+  typeChecker.visit(program);
+
+
+
 }
