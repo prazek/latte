@@ -1524,7 +1524,7 @@ bool LatteParser::sempred(RuleContext *context, size_t ruleIndex, size_t predica
   return true;
 }
 
-bool LatteParser::exprSempred(ExprContext *_localctx, size_t predicateIndex) {
+bool LatteParser::exprSempred(ExprContext */*_localctx*/, size_t predicateIndex) {
   switch (predicateIndex) {
     case 0: return precpred(_ctx, 12);
     case 1: return precpred(_ctx, 11);

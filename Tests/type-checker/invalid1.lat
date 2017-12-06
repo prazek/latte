@@ -20,6 +20,22 @@ void unknownVariable() {
 
 }
 
+void weirdAssign() {
+// CHECK:
+    int a = a;
+
+    int b;
+    {
+    // CHECK
+        int b = b;
+    }
+
+    int c;
+    {
+        int c;
+    }
+}
+
 void operator() {
 // CHECK:
    a + 42;
@@ -46,7 +62,15 @@ void incr() {
 void boolOps() {
 
     boolean a = true;
-    boolean b = false;
+    boolean b = a;
+    4 < 2;
+// CHECK:
+    false < true;
+
+// CHECK:
+    4 > a && a < 4;
+
+
 
     a && b || c;
 // CHECK:

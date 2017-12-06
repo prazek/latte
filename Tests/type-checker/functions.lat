@@ -1,0 +1,46 @@
+void f() {
+    f();
+    g();
+}
+
+void g() {
+}
+
+void ret() {
+    return;
+    // CHECK:
+    return 42;
+
+    // CHECK:
+    return true;
+
+    // CHECK:
+    return "ab";
+}
+
+int i() {
+    return 42;
+    // CHECK:
+    return true;
+    // CHECK:
+    return;
+    // CHECK:
+    return "ab";
+}
+
+int calls() {
+    // CHECK:
+    f(42);
+
+    return i();
+
+    // CHECK:
+    return f();
+}
+
+
+// CHECK:
+int calls() {}
+
+// CHECK:
+void calls() {}

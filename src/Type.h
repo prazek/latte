@@ -96,10 +96,10 @@ private:
 
 
 class FunctionType final : public Type {
-  std::unique_ptr<Type> returnType;
-  std::vector<std::unique_ptr<Type>> argumentTypes;
-
 public:
+  Type *returnType;
+  std::vector<Type*> argumentTypes;
+
   bool operator==(const Type& other) const override {
     return other == *this;
   }
@@ -108,8 +108,14 @@ public:
   }
 
   bool operator==(const FunctionType &other) const override {
-    return std::tie(returnType, argumentTypes) ==
-      std::tie(other.returnType, other.argumentTypes);
+    if (*returnType != *other.returnType)
+      return false;
+    if (argumentTypes.size() != other.argumentTypes.size())
+      return false;
+    for (unsigned i = 0; i < argumentTypes.size(); i++)
+      if (*argumentTypes[i] != *other.argumentTypes[i])
+        return false;
+    return true;
   }
 
   std::string toString() const override {

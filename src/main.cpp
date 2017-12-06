@@ -36,7 +36,7 @@ int main(int argc, const char* argv[]) {
   auto parsedFile = parseFileName(argv[1]);
   auto llvmFileName = parsedFile + ".ll";
   auto bcFileName = parsedFile + ".bc";
-  std::fstream outFile(llvmFileName, std::ios_base::out);
+  //std::fstream outFile(llvmFileName, std::ios_base::out);
 
 
   ANTLRInputStream input(file);
