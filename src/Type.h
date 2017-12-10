@@ -84,6 +84,7 @@ public:
       case POD::String:
         return "string";
     }
+    assert(false && "Unreachable");
   }
 
 

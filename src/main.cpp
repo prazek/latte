@@ -47,8 +47,6 @@ int main(int argc, const char* argv[]) {
   LatteParser parser(&tokens);
   auto *program = parser.program();
 
-  std::cout << program->toStringTree() << std::endl;
-
   Context context(fileName);
 
   TypeChecker typeChecker(context);

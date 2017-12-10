@@ -1,0 +1,23 @@
+
+void foo(int a) {
+    // CHECK:
+    if (a) { }
+
+    if (a == 42) {
+    // CHECK:
+        int b = false;
+    }
+    else {
+        // CHECK:
+        int b = true;
+    }
+
+    while(true || false) {
+        // CHECK:
+        abc = 32;
+    }
+
+    int b = 3;
+    if (a == 3)
+        b = 4;
+}

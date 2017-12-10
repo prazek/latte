@@ -44,3 +44,35 @@ int calls() {}
 
 // CHECK:
 void calls() {}
+
+
+int foo(int z) {
+
+    z = 4;
+}
+
+void g2(int p, int a) {
+    // CHECK:
+    z = 4;
+    p + a;
+}
+
+void weirdCalls(int foo) {
+    foo();
+
+    calls();
+    // CHECK:
+    calls(42);
+    // CHECK:
+    calls("abc", 32);
+
+
+    weirdCalls(42);
+
+}
+
+int twoArgs(int z, string a) {
+    twoArgs(z - 1, a);
+    // CHECK:
+    twoArgs(1, 1);
+}

@@ -15,7 +15,8 @@ public:
     varTypes.pop_back();
   }
 
-  bool addVariableType(std::string name, Type *type) {
+  [[nodiscard]]
+  bool addVariableType(std::string name, Type *type)  {
     if (findVariableTypeCurrentScope(name))
       return false;
     varTypes.back()[std::move(name)] = type;
@@ -97,7 +98,7 @@ public:
   antlrcpp::Any visitIncr(LatteParser::IncrContext *ctx) override;
 
   antlrcpp::Any visitDecr(LatteParser::DecrContext *ctx) override;
-/*
+
   antlrcpp::Any visitRet(LatteParser::RetContext *ctx) override;
 
   antlrcpp::Any visitVRet(LatteParser::VRetContext *ctx) override;
@@ -108,8 +109,6 @@ public:
 
   antlrcpp::Any visitWhile(LatteParser::WhileContext *ctx) override;
 
-  antlrcpp::Any visitSExp(LatteParser::SExpContext *ctx) override;
-*/
   antlrcpp::Any visitInt(LatteParser::IntContext *ctx) override;
 
   antlrcpp::Any visitStr(LatteParser::StrContext *ctx) override;

@@ -173,24 +173,44 @@ antlrcpp::Any TypeChecker::visitTopDef(LatteParser::TopDefContext *ctx) {
     auto * funType = new FunctionType;
     funType->returnType = visit(ctx->children.front());
 
-    f
-
-    if (variableScope.addVariableType(funName, funType))
+    if (!variableScope.addVariableType(funName, funType))
       context.diagnostic.issueError("redefinition of function '" + funName + "'", ctx);
+
+    if (ctx->children.size() == 6)
+      funType->argumentTypes = visit(ctx->children.at(3)).as<std::vector<Type*>>();
+    else
+      assert(ctx->children.size() == 5);
     return {};
   }
 
   auto *funType = cast<FunctionType>(variableScope.findVariableTypeCurrentScope(funName));
   currentReturnType = funType->returnType;
 
-  return visit(ctx->children.back());
+  variableScope.openNewScope();
+  // Add argument names
+  if (ctx->children.size() == 6)
+    visit(ctx->children.at(3));
+  else
+    assert(ctx->children.size() == 5);
+  visit(ctx->children.back());
+
+  variableScope.closeScope();
+  return {};
 }
 
 antlrcpp::Any TypeChecker::visitArg(LatteParser::ArgContext *ctx) {
-  std::vector<Type*>
-  for (unsigned i = 3; i < ctx->children.size() - 2; i += 2)
-    funType->argumentTypes.push_back((Type*)visit(ctx->children.at(i)));
-  return LatteBaseVisitor::visitArg(ctx);
+  std::vector<Type*> argumentTypes;
+  for (unsigned i = 0; i < ctx->children.size(); i += 3) {
+    Type * argumentType = visit(ctx->children.at(i));
+    argumentTypes.push_back(argumentType);
+    if (!initialPass) {
+      std::string argName = ctx->children.at(i+1)->getText();
+      if (!variableScope.addVariableType(argName, argumentType)) {
+        context.diagnostic.issueError("redefinition of function '" + argName + "'", ctx);
+      }
+    }
+  }
+  return argumentTypes;
 }
 
 antlrcpp::Any TypeChecker::visitEInt(LatteParser::EIntContext *) {
@@ -257,7 +277,7 @@ antlrcpp::Any TypeChecker::visitItem(LatteParser::ItemContext *ctx) {
 }
 antlrcpp::Any TypeChecker::visitEId(LatteParser::EIdContext *ctx) {
   assert(ctx->children.size() == 1);
-  return visitID(ctx->children.at(0)->getText(), ctx);
+  return visitID(ctx->children.front()->getText(), ctx);
 }
 
 
@@ -362,8 +382,105 @@ antlrcpp::Any TypeChecker::visitBlock(LatteParser::BlockContext *ctx) {
 antlrcpp::Any TypeChecker::visitEParen(LatteParser::EParenContext *ctx) {
   return visit(ctx->children.at(1));
 }
-antlrcpp::Any TypeChecker::visitEFunCall(LatteParser::EFunCallContext *ctx) {
 
-  return LatteBaseVisitor::visitEFunCall(ctx);
+antlrcpp::Any TypeChecker::visitEFunCall(LatteParser::EFunCallContext *ctx) {
+  assert(3 <= ctx->children.size());
+  std::string funName = ctx->children.front()->getText();
+  Type *idType = visitID(funName, ctx);
+  if (auto *funType =  dyn_cast<FunctionType>(idType)) {
+
+    if (ctx->children.size() <= 3)
+      return funType->returnType;
+
+    auto argumentTypes = [this](auto *ctx) {
+      std::vector<Type*> argumentTypes;
+      for (unsigned i = 2; i < ctx->children.size(); i += 2) {
+        Type *argumentType = visit(ctx->children.at(i));
+        argumentTypes.push_back(argumentType);
+      }
+      return argumentTypes;
+    }(ctx);
+
+    if (argumentTypes.size() != funType->argumentTypes.size()) {
+      context.diagnostic.issueError("Function '" + funName + "' requires "
+                                        + std::to_string(funType->argumentTypes.size())
+                                        + " arguments; " +
+          std::to_string(argumentTypes.size()) + " was provided", ctx);
+      return funType->returnType;
+    }
+
+
+    for (unsigned i = 0; i < argumentTypes.size(); i++) {
+      if (*argumentTypes.at(i) == *funType->argumentTypes.at(i))
+        continue;
+      context.diagnostic.issueError("Function '" + funName + "' expects type '"
+          + funType->argumentTypes.at(i)->toString() + "' as argument "
+                                        + std::to_string(funType->argumentTypes.size())
+                                        + "; got argument of type '"
+                                        + argumentTypes.at(i)->toString() +"'"
+          , ctx);
+    }
+
+    return funType->returnType;
+  }
+
+  context.diagnostic.issueError("Type '" + idType->toString() + "' can't be called", ctx);
+  return idType;
+
+}
+
+antlrcpp::Any TypeChecker::visitRet(LatteParser::RetContext *ctx) {
+  assert(ctx->children.size() == 3);
+  Type *exprType = visit(ctx->children.at(1));
+  if (*exprType != *currentReturnType)
+    context.diagnostic.issueError("Expected expression of type '"
+                                      + currentReturnType->toString() +
+        "' but got '" + exprType->toString() + "'", ctx);
+  return {};
+
+
+}
+
+antlrcpp::Any TypeChecker::visitVRet(LatteParser::VRetContext *ctx) {
+  assert(ctx->children.size() == 2);
+  if (!isVoid(*currentReturnType))
+    context.diagnostic.issueError("Expected expression of type '"
+                                      + currentReturnType->toString() +
+        "'", ctx);
+
+  return {};
+}
+antlrcpp::Any TypeChecker::visitCond(LatteParser::CondContext *ctx) {
+  assert(ctx->children.size() == 5);
+
+  Type *type = visit(ctx->children.at(2));
+  if (!isBoolean(*type))
+    context.diagnostic.issueError("Expected boolean expr inside if", ctx);
+
+  visit(ctx->children.at(4));
+  return {};
+}
+
+antlrcpp::Any TypeChecker::visitCondElse(LatteParser::CondElseContext *ctx) {
+  assert(ctx->children.size() == 7);
+
+  Type *type = visit(ctx->children.at(2));
+  if (!isBoolean(*type))
+    context.diagnostic.issueError("Expected boolean expr inside if", ctx);
+
+  visit(ctx->children.at(4));
+  visit(ctx->children.at(6));
+  return {};
+}
+
+antlrcpp::Any TypeChecker::visitWhile(LatteParser::WhileContext *ctx) {
+  assert(ctx->children.size() == 5);
+
+  Type *type = visit(ctx->children.at(2));
+  if (!isBoolean(*type))
+    context.diagnostic.issueError("Expected boolean expr inside if", ctx);
+
+  visit(ctx->children.at(4));
+  return {};
 }
 
