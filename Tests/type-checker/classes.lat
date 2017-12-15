@@ -1,0 +1,33 @@
+class A {
+    int a, b;
+    void foo() {}
+}
+
+class B : A {
+    int a;
+}
+
+int main() {
+    B a;
+    a.a;
+    a.foo();
+
+    // CHECK:
+    //a.42;
+
+    // CHECK:
+    a.bar();
+
+    // CHECK:
+    a.z;
+
+}
+
+class Z {
+    A a;
+}
+
+void p() {
+   Z z;
+   z.a.a;
+}

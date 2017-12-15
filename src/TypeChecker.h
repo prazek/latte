@@ -76,6 +76,7 @@ class TypeChecker : public LatteBaseVisitor {
 private:
   Context &context;
   std::unordered_map<antlr4::ParserRuleContext *, Type*> types;
+  std::unordered_map<std::string, ClassType*> classTypes;
   VariableScope variableScope;
   bool initialPass;
   Type *currentReturnType;
@@ -85,7 +86,7 @@ public:
 
   antlrcpp::Any visitProgram(LatteParser::ProgramContext *ctx) override;
 
-  antlrcpp::Any visitTopDef(LatteParser::TopDefContext *ctx) override;
+  antlrcpp::Any visitFuncDef(LatteParser::FuncDefContext *ctx) override;
 
   antlrcpp::Any visitArg(LatteParser::ArgContext *ctx) override;
 
@@ -144,6 +145,11 @@ public:
   antlrcpp::Any visitEFalse(LatteParser::EFalseContext *ctx) override;
 
   antlrcpp::Any visitEAddOp(LatteParser::EAddOpContext *ctx) override;
+
+  antlrcpp::Any visitClassName(LatteParser::ClassNameContext *ctx) override;
+
+  antlrcpp::Any visitClassDef(LatteParser::ClassDefContext *ctx) override;
+
 
   Type *handleBinaryBooleans(LatteParser::ExprContext *ctx);
   Type *handleIncrOrDecr(LatteParser::StmtContext *ctx, const std::string &op);

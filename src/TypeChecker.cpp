@@ -165,7 +165,7 @@ antlrcpp::Any TypeChecker::visitProgram(LatteParser::ProgramContext *ctx) {
   return {};
 }
 
-antlrcpp::Any TypeChecker::visitTopDef(LatteParser::TopDefContext *ctx) {
+antlrcpp::Any TypeChecker::visitFuncDef(LatteParser::FuncDefContext *ctx) {
   // type_ ID '(' arg? ')'
   std::string funName = ctx->children.at(1)->getText();
 
@@ -482,5 +482,54 @@ antlrcpp::Any TypeChecker::visitWhile(LatteParser::WhileContext *ctx) {
 
   visit(ctx->children.at(4));
   return {};
+}
+
+antlrcpp::Any TypeChecker::visitClassName(LatteParser::ClassNameContext *ctx) {
+  std::string typeName = ctx->getText();
+  if (!classTypes.count(typeName)) {
+    context.diagnostic.issueError("Unknown class type '" + typeName + "'", ctx);
+    return (Type*)nullptr;
+  }
+
+  return (Type*)classTypes.at(typeName);
+}
+antlrcpp::Any TypeChecker::visitClassDef(LatteParser::ClassDefContext *ctx) {
+  assert(4 <= ctx->children.size());
+
+  auto *classType = new ClassType;
+  classType->name = ctx->children.at(1)->getText();
+
+  if (classTypes.count(classType->name)) {
+    context.diagnostic.issueError(
+        "Duplicated name for '" + classType->name + "'", ctx);
+    return (Type*)nullptr;
+  } else {
+    classTypes[classType->name] = classType;
+  }
+
+  if (variableScope.findVariableType(classType->name) != nullptr) {
+    context.diagnostic.issueError(
+        "Duplicated name for '" + classType->name + "'", ctx);
+  }
+
+  unsigned classItemsBeg;
+  if (ctx->children.at(2)->getText() == ":") {
+    classItemsBeg = 5;
+    std::string baseClass = ctx->children.at(3)->getText();
+    if (classTypes.count(baseClass)) {
+      classType->baseClass = classTypes.at(baseClass);
+    } else {
+      context.diagnostic.issueError("Unknown class type '" + baseClass + "'", ctx);
+    }
+  } else
+    classItemsBeg = 3;
+
+  for (unsigned i = classItemsBeg; i < ctx->children.size() - 1; i++) {
+    // TODO
+  }
+
+
+
+  return (Type*)classType;
 }
 

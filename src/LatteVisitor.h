@@ -1,5 +1,5 @@
 
-// Generated from Latte.g4 by ANTLR 4.7
+// Generated from Latte.g4 by ANTLR 4.7.1
 
 #pragma once
 
@@ -21,7 +21,13 @@ public:
    */
     virtual antlrcpp::Any visitProgram(LatteParser::ProgramContext *context) = 0;
 
-    virtual antlrcpp::Any visitTopDef(LatteParser::TopDefContext *context) = 0;
+    virtual antlrcpp::Any visitFuncDef(LatteParser::FuncDefContext *context) = 0;
+
+    virtual antlrcpp::Any visitClassDef(LatteParser::ClassDefContext *context) = 0;
+
+    virtual antlrcpp::Any visitItemVarDecl(LatteParser::ItemVarDeclContext *context) = 0;
+
+    virtual antlrcpp::Any visitItemMethodDef(LatteParser::ItemMethodDefContext *context) = 0;
 
     virtual antlrcpp::Any visitArg(LatteParser::ArgContext *context) = 0;
 
@@ -59,6 +65,8 @@ public:
 
     virtual antlrcpp::Any visitVoid(LatteParser::VoidContext *context) = 0;
 
+    virtual antlrcpp::Any visitClassName(LatteParser::ClassNameContext *context) = 0;
+
     virtual antlrcpp::Any visitItem(LatteParser::ItemContext *context) = 0;
 
     virtual antlrcpp::Any visitEId(LatteParser::EIdContext *context) = 0;
@@ -73,6 +81,8 @@ public:
 
     virtual antlrcpp::Any visitEInt(LatteParser::EIntContext *context) = 0;
 
+    virtual antlrcpp::Any visitEMemberExpr(LatteParser::EMemberExprContext *context) = 0;
+
     virtual antlrcpp::Any visitEUnOp(LatteParser::EUnOpContext *context) = 0;
 
     virtual antlrcpp::Any visitEStr(LatteParser::EStrContext *context) = 0;
@@ -86,6 +96,14 @@ public:
     virtual antlrcpp::Any visitEFalse(LatteParser::EFalseContext *context) = 0;
 
     virtual antlrcpp::Any visitEAddOp(LatteParser::EAddOpContext *context) = 0;
+
+    virtual antlrcpp::Any visitMemExpr(LatteParser::MemExprContext *context) = 0;
+
+    virtual antlrcpp::Any visitMemCallrBasic(LatteParser::MemCallrBasicContext *context) = 0;
+
+    virtual antlrcpp::Any visitMemCallr(LatteParser::MemCallrContext *context) = 0;
+
+    virtual antlrcpp::Any visitMemVar(LatteParser::MemVarContext *context) = 0;
 
     virtual antlrcpp::Any visitAddOp(LatteParser::AddOpContext *context) = 0;
 

@@ -1,4 +1,4 @@
-
+#pragma once
 
 template <typename T, typename From>
 T* dyn_cast(From* param) {

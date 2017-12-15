@@ -1,6 +1,7 @@
 #pragma once
 #include <memory>
 #include <vector>
+#include "Utilities.h"
 
 class SimpleType;
 class FunctionType;
@@ -13,6 +14,7 @@ public:
   virtual bool operator==(const Type&) const = 0;
   virtual bool operator==(const SimpleType&) const = 0;
   virtual bool operator==(const FunctionType&) const = 0;
+
   virtual std::string toString() const = 0;
   virtual ~Type() = 0;
 };
@@ -135,3 +137,43 @@ public:
   }
 };
 
+
+class ClassType final : public Type {
+public:
+  std::unordered_map<std::string, Type*> types;
+  std::string name;
+  ClassType *baseClass = nullptr;
+
+  std::string toString() const override {
+    return name;
+  }
+
+  std::string dump() const {
+    std::stringstream ss;
+    ss << "class " << name;
+    if (baseClass)
+      ss << " : " << baseClass->name;
+    ss << " {\n";
+
+    for (const auto &p : types) {
+      ss << p.first << " " << p.second->toString() << ";\n";
+    }
+    ss << ")";
+    return ss.str();
+  }
+
+  bool operator==(const Type& type) const override {
+    if (const auto *ct = dyn_cast<ClassType>(&type)) {
+      // Let's add ODR to the language so that this code is correct.
+      return name == ct->name;
+    }
+    return false;
+  }
+  bool operator==(const SimpleType&) const override {
+    return false;
+  }
+  bool operator==(const FunctionType&) const override {
+    return false;
+  }
+
+};

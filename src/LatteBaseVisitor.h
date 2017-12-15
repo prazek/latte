@@ -1,5 +1,5 @@
 
-// Generated from Latte.g4 by ANTLR 4.7
+// Generated from Latte.g4 by ANTLR 4.7.1
 
 #pragma once
 
@@ -19,7 +19,19 @@ public:
     return visitChildren(ctx);
   }
 
-  virtual antlrcpp::Any visitTopDef(LatteParser::TopDefContext *ctx) override {
+  virtual antlrcpp::Any visitFuncDef(LatteParser::FuncDefContext *ctx) override {
+    return visitChildren(ctx);
+  }
+
+  virtual antlrcpp::Any visitClassDef(LatteParser::ClassDefContext *ctx) override {
+    return visitChildren(ctx);
+  }
+
+  virtual antlrcpp::Any visitItemVarDecl(LatteParser::ItemVarDeclContext *ctx) override {
+    return visitChildren(ctx);
+  }
+
+  virtual antlrcpp::Any visitItemMethodDef(LatteParser::ItemMethodDefContext *ctx) override {
     return visitChildren(ctx);
   }
 
@@ -95,6 +107,10 @@ public:
     return visitChildren(ctx);
   }
 
+  virtual antlrcpp::Any visitClassName(LatteParser::ClassNameContext *ctx) override {
+    return visitChildren(ctx);
+  }
+
   virtual antlrcpp::Any visitItem(LatteParser::ItemContext *ctx) override {
     return visitChildren(ctx);
   }
@@ -123,6 +139,10 @@ public:
     return visitChildren(ctx);
   }
 
+  virtual antlrcpp::Any visitEMemberExpr(LatteParser::EMemberExprContext *ctx) override {
+    return visitChildren(ctx);
+  }
+
   virtual antlrcpp::Any visitEUnOp(LatteParser::EUnOpContext *ctx) override {
     return visitChildren(ctx);
   }
@@ -148,6 +168,22 @@ public:
   }
 
   virtual antlrcpp::Any visitEAddOp(LatteParser::EAddOpContext *ctx) override {
+    return visitChildren(ctx);
+  }
+
+  virtual antlrcpp::Any visitMemExpr(LatteParser::MemExprContext *ctx) override {
+    return visitChildren(ctx);
+  }
+
+  virtual antlrcpp::Any visitMemCallrBasic(LatteParser::MemCallrBasicContext *ctx) override {
+    return visitChildren(ctx);
+  }
+
+  virtual antlrcpp::Any visitMemCallr(LatteParser::MemCallrContext *ctx) override {
+    return visitChildren(ctx);
+  }
+
+  virtual antlrcpp::Any visitMemVar(LatteParser::MemVarContext *ctx) override {
     return visitChildren(ctx);
   }
 

@@ -5,7 +5,13 @@ program
     ;
 
 topDef
-    : type_ ID '(' arg? ')' block
+    : type_ ID '(' arg? ')' block             #FuncDef
+    | 'class' ID (':' ID)? '{' classItem* '}' #ClassDef
+    ;
+
+classItem
+    : type_ item ( ',' item )* ';'                  # ItemVarDecl
+    | 'virtual'? type_ ID '(' arg? ')' block        # ItemMethodDef
     ;
 
 arg
@@ -36,6 +42,7 @@ type_
     | 'string'  # Str
     | 'boolean' # Bool
     | 'void'    # Void
+    | ID        # ClassName
     ;
 
 item
@@ -55,8 +62,16 @@ expr
     | 'true'                              # ETrue
     | 'false'                             # EFalse
     | ID '(' ( expr ( ',' expr )* )? ')'  # EFunCall
+    | memberExpr                          # EMemberExpr
     | STR                           # EStr
     | '(' expr ')'                  # EParen
+    ;
+
+memberExpr
+    : memberExpr '.' ID '(' ( expr ( ',' expr )* )? ')' #MemCallr
+    | memberExpr '.' ID                                 #MemVar
+    | ID '.' ID '(' ( expr ( ',' expr )* )? ')'         #MemCallrBasic
+    | ID '.' ID                                         #MemExpr
     ;
 
 addOp
