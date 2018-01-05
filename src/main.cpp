@@ -2,8 +2,10 @@
 #include "LatteLexer.h"
 #include "LatteParser.h"
 #include "TypeChecker.h"
+#include "LLVMCodeGen.h"
 #include <string>
 #include <fstream>
+#include <llvm/Support/raw_ostream.h>
 
 using namespace antlr4;
 
@@ -52,6 +54,11 @@ int main(int argc, const char* argv[]) {
   TypeChecker typeChecker(context);
   typeChecker.visit(program);
 
+
+  LLVMCodeGen codeGen(typeChecker);
+  codeGen.visit(program);
+
+  codeGen.module->print(llvm::errs(), nullptr);
 
 
 }

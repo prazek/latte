@@ -2,6 +2,8 @@
 #include <memory>
 #include <vector>
 #include "Utilities.h"
+#include "llvm/IR/Type.h"
+#include "llvm/IR/DerivedTypes.h"
 
 class SimpleType;
 class FunctionType;
@@ -14,6 +16,8 @@ public:
   virtual bool operator==(const Type&) const = 0;
   virtual bool operator==(const SimpleType&) const = 0;
   virtual bool operator==(const FunctionType&) const = 0;
+
+  virtual llvm::Type* toLLVMType(llvm::LLVMContext &c) const = 0;
 
   virtual std::string toString() const = 0;
   virtual ~Type() = 0;
@@ -89,6 +93,18 @@ public:
     assert(false && "Unreachable");
   }
 
+  llvm::Type *toLLVMType(llvm::LLVMContext &c) const override {
+    switch (pod) {
+      case POD::Void:
+        return llvm::Type::getVoidTy(c);
+      case POD::Bool:
+        return llvm::Type::getInt1Ty(c);
+      case POD::Int:
+        return llvm::Type::getInt32Ty(c);
+    case POD::String:
+      return llvm::Type::getInt8PtrTy(c);
+    }
+  }
 
   POD getPOD() const { return pod; }
 
@@ -135,6 +151,16 @@ public:
     ss << ")";
     return ss.str();
   }
+
+  llvm::Type *toLLVMType(llvm::LLVMContext &c) const override {
+    llvm::Type * retTy = returnType->toLLVMType(c);
+    llvm::SmallVector<llvm::Type*, 4> argTypes;
+    for (Type *argType : argumentTypes) {
+      argTypes.push_back(argType->toLLVMType(c));
+    }
+
+    return llvm::FunctionType::get(retTy, argTypes, false);
+  }
 };
 
 
@@ -174,6 +200,11 @@ public:
   }
   bool operator==(const FunctionType&) const override {
     return false;
+  }
+
+  llvm::Type* toLLVMType(llvm::LLVMContext &) const override {
+    assert(false);
+    return nullptr;
   }
 
 };

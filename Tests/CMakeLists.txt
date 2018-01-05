@@ -10,8 +10,9 @@ set(SOURCE_FILES {$SOURCE_FILES} ${TEST_FILES})
 add_executable(runTests ${TEST_FILES})
 
 target_link_libraries(runTests gtest gtest_main)
-target_link_libraries(runTests instant_lib)
+target_link_libraries(runTests latte_lib)
 target_link_libraries(runTests antlr4lib)
+target_link_libraries(runTests ${llvm_libs})
 
 configure_lit_site_cfg(
         ${CMAKE_CURRENT_SOURCE_DIR}/lit.site.cfg.py.in

@@ -5,18 +5,18 @@ set(LLVM_BUILD_DIR
         "${LLVM_PREFIX}/llvm_external-build/")
 
 
-set(LLVM_ROOT "${LLVM_PREFIX}/llvm/")
+set(LLVM_ROOT "${LLVM_PREFIX}/src/llvm_external")
 set(ANTLR_INCLUDE_DIR "${LLVM_BUILD_DIR}/include/")
 
 set(LLVM_LIB
-        "${LLVM_BUILD_DIR}/lib/llvm{CMAKE_STATIC_LIBRARY_SUFFIX}")
+        "${LLVM_BUILD_DIR}/lib/libLLVMCore${CMAKE_STATIC_LIBRARY_SUFFIX}")
 
 file(MAKE_DIRECTORY "${ANTLR_INCLUDE_DIR}")
 
 
 ExternalProject_Add(llvm_external
         GIT_REPOSITORY https://github.com/llvm-mirror/llvm
-        GIT_TAG "5.0"
+        GIT_TAG "origin/release_50"
         LOG_DOWNLOAD       ON
         PREFIX "${LLVM_PREFIX}"
         CONFIGURE_COMMAND "${CMAKE_COMMAND}" "${LLVM_ROOT}" "-DCMAKE_INSTALL_PREFIX=${LLVM_BUILD_DIR}"
@@ -31,5 +31,6 @@ set_target_properties(llvmlib PROPERTIES
         IMPORTED_LINK_INTERFACE_LIBRARIES "${LLVM_LIB}")
 
 add_dependencies(llvmlib llvm_external)
+
 
 

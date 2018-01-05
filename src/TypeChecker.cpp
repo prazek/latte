@@ -168,6 +168,7 @@ antlrcpp::Any TypeChecker::visitProgram(LatteParser::ProgramContext *ctx) {
 antlrcpp::Any TypeChecker::visitFuncDef(LatteParser::FuncDefContext *ctx) {
   // type_ ID '(' arg? ')'
   std::string funName = ctx->children.at(1)->getText();
+  functionName[ctx] = funName;
 
   if (initialPass) {
     auto * funType = new FunctionType;
@@ -184,6 +185,8 @@ antlrcpp::Any TypeChecker::visitFuncDef(LatteParser::FuncDefContext *ctx) {
   }
 
   auto *funType = cast<FunctionType>(variableScope.findVariableTypeCurrentScope(funName));
+  types[ctx] = funType;
+
   currentReturnType = funType->returnType;
 
   variableScope.openNewScope();
