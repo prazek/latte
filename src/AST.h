@@ -97,6 +97,40 @@ struct AssignStmt : Stmt {
   }
 };
 
+struct ReturnStmt : Stmt {
+  ReturnStmt(Expr *expr) : expr(expr) {}
+  Expr *expr;
+
+  std::string dump() const override {
+    return "ReturnStmt";
+  }
+};
+
+struct IfStmt : Stmt {
+  IfStmt(Expr *condition, Stmt *stmt, Stmt *elseStmt)
+      : condition(condition), stmt(stmt), elseStmt(elseStmt) {}
+
+  Expr *condition;
+  Stmt *stmt;
+  Stmt *elseStmt;
+
+  std::string dump() const override {
+    return "IfStmt";
+  }
+};
+
+struct WhileStmt : Stmt {
+  WhileStmt(Expr *cond, Stmt *stmt)
+      : condition(cond), stmt(stmt) {}
+
+  Expr *condition;
+  Stmt *stmt;
+
+  std::string dump() const override {
+    return "WhileStmt";
+  }
+};
+
 struct ExprStmt : Stmt {
   ExprStmt(Expr *expr) : expr(expr) {}
   Expr *expr;
@@ -114,31 +148,40 @@ struct Expr {
 };
 
 struct BinExpr : Expr {
-  BinExpr(Type* type, char mulOp, Expr *lhs, Expr* rhs)
-  : Expr(type), mulOp(mulOp), lhs(lhs), rhs(rhs) {}
+  enum class BinOp : uint8_t {
+    // Relation operators
+    LESS,
+    LESS_EQ,
+    GREATER,
+    GREATER_EQ,
+    EQUALS,
+    NOT_EQUALS,
+
+    // mul operators
+    Mul,
+    Div,
+    Mod,
+
+    // add operators
+    Add,
+    Minus,
+
+    // Boolean opeartors
+    And,
+    Or,
+  };
 
 
-  char mulOp;
+  BinExpr(Type* type, BinOp binOp, Expr *lhs, Expr* rhs)
+  : Expr(type), binOp(binOp), lhs(lhs), rhs(rhs) {}
+
+  BinOp binOp;
   Expr *lhs, *rhs;
-};
-
-struct MulExpr : BinExpr {
-  MulExpr(Type* type, char mulOp, Expr *lhs, Expr* rhs)
-      : BinExpr(type, mulOp, lhs, rhs) {}
-
 
   std::string dump() const override {
-    return "MulExpr:" + mulOp + lhs->dump() + rhs->dump();
+    return "BinExpr:";
   }
-};
 
-struct AddExpr : BinExpr {
-  AddExpr(Type* type, char addOp, Expr *lhs, Expr* rhs)
-    : BinExpr(type, addOp, lhs, rhs) {}
-
-  std::string dump() const override {
-    return "AddExpr:" + mulOp + lhs->dump() + rhs->dump();
-  }
 };
 
 struct VarExpr : Expr {

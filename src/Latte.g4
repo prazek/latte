@@ -10,8 +10,8 @@ topDef
     ;
 
 classItem
-    : type_ item ( ',' item )* ';'                  # ItemVarDecl
-    | 'virtual'? type_ ID '(' arg? ')' block        # ItemMethodDef
+    : type_ item ( ',' item )* ';'       # ItemVarDecl
+    | type_ ID '(' arg? ')' block        # ItemMethodDef
     ;
 
 arg

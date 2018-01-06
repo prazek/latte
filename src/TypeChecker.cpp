@@ -60,7 +60,18 @@ antlrcpp::Any TypeChecker::visitEMulOp(LatteParser::EMulOpContext *ctx) {
   auto *rhs = ctx->children.at(2);
   Expr* rhsExpr = visit(rhs);
 
-  auto *mulExpr = new MulExpr(getInt(), ctx->children.at(1)->getText()[0], lhsExpr, rhsExpr);
+  auto getMulOp = [](const auto &op) {
+    if (op == "*")
+      return BinExpr::BinOp::Mul;
+    if (op == "/")
+      return BinExpr::BinOp::Div;
+    if (op == "%")
+      return BinExpr::BinOp::Mod;
+    llvm_unreachable("Unknown op");
+  };
+
+  auto *mulExpr = new BinExpr(getInt(), getMulOp(ctx->children.at(1)->getText()),
+                              lhsExpr, rhsExpr);
 
   if (lhsExpr->type == nullptr || rhsExpr->type == nullptr)
       return (Expr*)mulExpr;
@@ -70,12 +81,12 @@ antlrcpp::Any TypeChecker::visitEMulOp(LatteParser::EMulOpContext *ctx) {
     context.diagnostic.issueError("Cannot perform operation '" + op
                                     + "' on type '" + lhsExpr->type->toString() + "' and '"
                                     + rhsExpr->type->toString() + "'", ctx);
-    return getInt();
+    return (Expr*)mulExpr;
   }
 
   assert(*lhsExpr->type == *rhsExpr->type && "Only ints here");
 
-  return lhsExpr->type;
+  return (Expr*)mulExpr;
 }
 
 antlrcpp::Any TypeChecker::visitEAddOp(LatteParser::EAddOpContext *ctx) {
@@ -86,7 +97,16 @@ antlrcpp::Any TypeChecker::visitEAddOp(LatteParser::EAddOpContext *ctx) {
   auto *rhs = ctx->children.at(2);
   Expr* rhsExpr = visit(rhs);
 
-  auto addExpr = new AddExpr(getInt(), ctx->children.at(1)->getText()[0], lhsExpr, rhsExpr);
+  auto getAddOp = [](const auto &op) {
+    if (op == "+")
+      return BinExpr::BinOp::Add;
+    if (op == "-")
+      return BinExpr::BinOp::Minus;
+    llvm_unreachable("Unknown op");
+  };
+
+  auto addExpr = new BinExpr(getInt(), getAddOp(ctx->children.at(1)->getText()),
+                             lhsExpr, rhsExpr);
 
   if (lhsExpr->type == nullptr || lhsExpr->type == nullptr)
     return (Expr*)addExpr;
@@ -106,27 +126,43 @@ antlrcpp::Any TypeChecker::visitEAddOp(LatteParser::EAddOpContext *ctx) {
 antlrcpp::Any TypeChecker::visitERelOp(LatteParser::ERelOpContext *ctx) {
   assert(ctx->children.size() == 3);
   auto *lhs = ctx->children.at(0);
-  Type *lhsType = visit(lhs);
+  Expr *lhsExpr = visit(lhs);
   auto *rhs = ctx->children.at(2);
-  Type* rhsType = visit(rhs);
+  Expr* rhsExpr = visit(rhs);
 
-  if (lhsType == nullptr || rhsType == nullptr)
-    return (Type*) nullptr;
+  auto getRelOp = [](const auto &op) {
+    if (op == "<")
+      return BinExpr::BinOp::LESS;
+    if (op == "<=")
+      return BinExpr::BinOp::LESS_EQ;
+    if (op == ">")
+      return BinExpr::BinOp::GREATER;
+    if (op == ">=")
+      return BinExpr::BinOp::GREATER_EQ;
+    if (op == "==")
+      return BinExpr::BinOp::EQUALS;
+    if (op == "!=")
+      return BinExpr::BinOp::NOT_EQUALS;
+    llvm_unreachable("Unknown op");
+  };
+
+  auto *binExpr = new BinExpr(getBool(), getRelOp(ctx->children.at(1)->getText()),
+                              lhsExpr, rhsExpr);
+
+  if (lhsExpr->type == nullptr || lhsExpr->type == nullptr)
+    return (Expr*)binExpr;
 
   // TODO handle string
-  if (!isIntegral(*lhsType) || !isIntegral(*rhsType)) {
+  if (!isIntegral(*lhsExpr->type) || !isIntegral(*rhsExpr->type)) {
     std::string op = ctx->children.at(1)->getText();
     context.diagnostic.issueError("Cannot perform operation '" + op
-                                    + "' on type '" + lhsType->toString() + "' and '"
-                                    + rhsType->toString() + "'", ctx);
-    return getBool();
+                                    + "' on type '" + lhsExpr->type->toString() + "' and '"
+                                    + rhsExpr->type->toString() + "'", ctx);
+    return (Expr*) binExpr;
   }
 
-  assert(*lhsType == *rhsType && "Only ints here");
-
-  auto * retType = getBool();
-
-  return retType;
+  assert(*lhsExpr->type == *rhsExpr->type && "Only ints here");
+  return (Expr*)binExpr;
 }
 
 
@@ -296,10 +332,12 @@ antlrcpp::Any TypeChecker::visitItem(LatteParser::ItemContext *ctx) {
     Type * rollbackType = variableScope.temporariryUnregister(varName);
     Expr * expr = visit(ctx->children.at(2));
     variableScope.registerBack(varName, rollbackType);
-    return DeclItem{varName, expr};
+    return DeclItem{varName, expr, nullptr};
   }
-  return DeclItem{varName, nullptr};
+  return DeclItem{varName, nullptr, nullptr};
 }
+
+
 antlrcpp::Any TypeChecker::visitEId(LatteParser::EIdContext *ctx) {
   assert(ctx->children.size() == 1);
 
@@ -347,35 +385,37 @@ Type *TypeChecker::visitID(const std::string &varName, antlr4::ParserRuleContext
 
 
 antlrcpp::Any TypeChecker::visitEOr(LatteParser::EOrContext *ctx) {
-  return handleBinaryBooleans(ctx);
+  return handleBinaryBooleans(ctx, BinExpr::BinOp::Or);
 }
 
 antlrcpp::Any TypeChecker::visitEAnd(LatteParser::EAndContext *ctx) {
-  return handleBinaryBooleans(ctx);
+  return handleBinaryBooleans(ctx, BinExpr::BinOp::And);
 }
 
 
-Type *TypeChecker::handleBinaryBooleans(LatteParser::ExprContext *ctx) {
+Expr *TypeChecker::handleBinaryBooleans(LatteParser::ExprContext *ctx,
+                                        BinExpr::BinOp binOp) {
   assert(ctx->children.size() == 3);
   auto *lhs = ctx->children.at(0);
-  Type *lhsType = visit(lhs);
+  Expr *lhsExpr = visit(lhs);
   auto *rhs = ctx->children.at(2);
-  Type* rhsType = visit(rhs);
+  Expr* rhsExpr = visit(rhs);
 
-  if (lhsType == nullptr || rhsType == nullptr)
-    return (Type*) nullptr;
+  auto * binExpr = new BinExpr(getBool(), binOp, lhsExpr, rhsExpr);
+  if (lhsExpr->type == nullptr || rhsExpr->type == nullptr)
+    return binExpr;
 
   // TODO handle string
-  if (!isBoolean(*lhsType) || !isBoolean(*rhsType)) {
+  if (!isBoolean(*lhsExpr->type) || !isBoolean(*rhsExpr->type)) {
     std::string op = ctx->children.at(1)->getText();
     context.diagnostic.issueError("Cannot perform operation '" + op
-                                    + "' on type '" + lhsType->toString() + "' and '"
-                                    + rhsType->toString() + "'", ctx);
-    return (Type*) nullptr;
+                                    + "' on type '" + lhsExpr->type->toString() + "' and '"
+                                    + rhsExpr->type->toString() + "'", ctx);
+    return binExpr;
   }
 
-  assert(*lhsType == *rhsType && "Only boolean here");
-  return lhsType;
+  assert(*lhsExpr->type == *rhsExpr->type && "Only boolean here");
+  return binExpr;
 }
 
 antlrcpp::Any TypeChecker::visitEUnOp(LatteParser::EUnOpContext *ctx) {
@@ -464,14 +504,12 @@ antlrcpp::Any TypeChecker::visitEFunCall(LatteParser::EFunCallContext *ctx) {
 
 antlrcpp::Any TypeChecker::visitRet(LatteParser::RetContext *ctx) {
   assert(ctx->children.size() == 3);
-  Type *exprType = visit(ctx->children.at(1));
-  if (*exprType != *currentReturnType)
+  Expr *expr = visit(ctx->children.at(1));
+  if (*expr->type != *currentReturnType)
     context.diagnostic.issueError("Expected expression of type '"
                                       + currentReturnType->toString() +
-        "' but got '" + exprType->toString() + "'", ctx);
-  return {};
-
-
+        "' but got '" + expr->type->toString() + "'", ctx);
+  return (Stmt*)new ReturnStmt(expr);
 }
 
 antlrcpp::Any TypeChecker::visitVRet(LatteParser::VRetContext *ctx) {
@@ -481,40 +519,40 @@ antlrcpp::Any TypeChecker::visitVRet(LatteParser::VRetContext *ctx) {
                                       + currentReturnType->toString() +
         "'", ctx);
 
-  return {};
+  return (Stmt*)new ReturnStmt(nullptr);
 }
 antlrcpp::Any TypeChecker::visitCond(LatteParser::CondContext *ctx) {
   assert(ctx->children.size() == 5);
 
-  Type *type = visit(ctx->children.at(2));
-  if (!isBoolean(*type))
+  Expr *cond = visit(ctx->children.at(2));
+  if (!isBoolean(*cond->type))
     context.diagnostic.issueError("Expected boolean expr inside if", ctx);
 
-  visit(ctx->children.at(4));
-  return {};
+  Stmt *stmt = visit(ctx->children.at(4));
+  return (Stmt*)new IfStmt(cond, stmt, nullptr);
 }
 
 antlrcpp::Any TypeChecker::visitCondElse(LatteParser::CondElseContext *ctx) {
   assert(ctx->children.size() == 7);
 
-  Type *type = visit(ctx->children.at(2));
-  if (!isBoolean(*type))
+  Expr *cond = visit(ctx->children.at(2));
+  if (!isBoolean(*cond->type))
     context.diagnostic.issueError("Expected boolean expr inside if", ctx);
 
-  visit(ctx->children.at(4));
-  visit(ctx->children.at(6));
-  return {};
+  Stmt *stmt = visit(ctx->children.at(4));
+  Stmt *elseStmt = visit(ctx->children.at(6));
+  return (Stmt*)new IfStmt(cond, stmt, elseStmt);
 }
 
 antlrcpp::Any TypeChecker::visitWhile(LatteParser::WhileContext *ctx) {
   assert(ctx->children.size() == 5);
 
-  Type *type = visit(ctx->children.at(2));
-  if (!isBoolean(*type))
+  Expr *cond = visit(ctx->children.at(2));
+  if (!isBoolean(*cond->type))
     context.diagnostic.issueError("Expected boolean expr inside if", ctx);
 
-  visit(ctx->children.at(4));
-  return {};
+  Stmt *stmt = visit(ctx->children.at(4));
+  return (Stmt*) new WhileStmt{cond, stmt};
 }
 
 antlrcpp::Any TypeChecker::visitClassName(LatteParser::ClassNameContext *ctx) {

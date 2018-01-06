@@ -41,11 +41,16 @@ public:
       return visitDeclStmt(*declStmt);
     if (auto *assignStmt = dyn_cast<AssignStmt>(stmt))
       return visitAssignStmt(*assignStmt);
+    if (auto *retStmt = dyn_cast<ReturnStmt>(stmt))
+      return visitReturnStmt(*retStmt);
+    if (auto *ifStmt = dyn_cast<IfStmt>(stmt))
+      return visitIfStmt(*ifStmt);
+    if (auto *whileStmt = dyn_cast<WhileStmt>(stmt))
+      return visitWhileStmt(*whileStmt);
     if (auto *exprStmt = dyn_cast<ExprStmt>(stmt))
       return visitExprStmt(*exprStmt);
 
-    assert(false);
-    return {};
+    llvm_unreachable("Unhandled stmt");
   }
 
   virtual T visitBlockStmt(BlockStmt &blockStmt) {
@@ -64,6 +69,11 @@ public:
     return visitExpr(*assignStmt.initializer);
   }
 
+  virtual T visitReturnStmt(ReturnStmt &returnStmt) = 0;
+  virtual T visitIfStmt(IfStmt &condStmt) = 0;
+  virtual T visitWhileStmt(WhileStmt &whileStmt) = 0;
+
+
   virtual T visitExprStmt(ExprStmt &exprStmt) {
     return visitExpr(*exprStmt.expr);
   }
@@ -77,30 +87,10 @@ public:
       return visitConstIntExpr(*constIntExpr);
     if (auto *booleanExpr = dyn_cast<BooleanExpr>(expr))
       return visitBooleanExpr(*booleanExpr);
-    assert(false);
-    return {};
+    llvm_unreachable("Unhandled expr");
   }
 
-  virtual T visitBinExpr(BinExpr &binExpr) {
-    if (auto *mulExpr = dyn_cast<MulExpr>(binExpr))
-      return visitMulExpr(*mulExpr);
-    if (auto *addExpr = dyn_cast<AddExpr>(binExpr))
-      return visitAddExpr(*addExpr);
-    assert(false);
-    return {};
-  }
-
-  virtual T visitMulExpr(MulExpr &mulExpr) {
-    visitExpr(*mulExpr.lhs);
-    visitExpr(*mulExpr.rhs);
-    return {};
-  }
-
-  virtual T visitAddExpr(AddExpr &addExpr) {
-    visitExpr(*addExpr.lhs);
-    visitExpr(*addExpr.rhs);
-    return {};
-  }
+  virtual T visitBinExpr(BinExpr &binExpr) = 0;
 
   virtual T visitVarExpr(VarExpr &varExpr) = 0;
   virtual T visitConstIntExpr(ConstIntExpr &constIntExpr) = 0;

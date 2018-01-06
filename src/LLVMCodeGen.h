@@ -17,11 +17,18 @@ public:
   llvm::Value *visitClassDef(ClassDef &classDef) override;
   llvm::Value *visitDeclItem(DeclItem &declItem) override;
   llvm::Value *visitAssignStmt(AssignStmt &assignStmt) override;
-  llvm::Value *visitMulExpr(MulExpr &mulExpr) override;
-  llvm::Value *visitAddExpr(AddExpr &addExpr) override;
   llvm::Value *visitVarExpr(VarExpr &varExpr) override;
   llvm::Value *visitConstIntExpr(ConstIntExpr &constIntExpr) override;
   llvm::Value *visitBooleanExpr(BooleanExpr &booleanExpr) override;
+  llvm::Value *visitBinExpr(BinExpr &binExpr) override;
+  llvm::Value *visitReturnStmt(ReturnStmt &returnStmt) override;
+  llvm::Value *visitIfStmt(IfStmt &condStmt) override;
+  llvm::Value *visitWhileStmt(WhileStmt &whileStmt) override;
+
+private:
+  llvm::Value* handleAnd(BinExpr &andExpr);
+  llvm::Value* handleOr(BinExpr &andExpr);
+
 
 private:
   llvm::Function *currentFunction = nullptr;
