@@ -1,5 +1,9 @@
 int foo() {
+    //5;
+    5 + 5;
     int a;
 
-    return a;
+    a = 5;
+    a = 5 + 5;
+
 }

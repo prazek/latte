@@ -4,6 +4,7 @@
 #include "Type.h"
 #include "Context.h"
 #include "VariableScope.h"
+#include "AST.h"
 
 class TypeChecker : public LatteBaseVisitor {
 private:
@@ -13,10 +14,9 @@ private:
   bool initialPass;
   Type *currentReturnType;
 public:
-  std::unordered_map<antlr4::ParserRuleContext *, Type*> types;
-  std::unordered_map<LatteParser::FuncDefContext *, std::string> functionName;
-  std::unordered_map<std::string, ClassType*> classTypes;
 
+  std::unordered_map<std::string, ClassType*> classTypes;
+  AST ast;
 public:
   TypeChecker(Context &context) : context(context) {}
 
@@ -90,6 +90,9 @@ public:
   Type *handleBinaryBooleans(LatteParser::ExprContext *ctx);
   Type *handleIncrOrDecr(LatteParser::StmtContext *ctx, const std::string &op);
   Type* visitID(const std::string& varName, antlr4::ParserRuleContext *ctx);
+  antlrcpp::Any visitEmpty(LatteParser::EmptyContext *ctx) override;
+  antlrcpp::Any visitBlockStmt(LatteParser::BlockStmtContext *ctx) override;
+  antlrcpp::Any visitSExp(LatteParser::SExpContext *ctx) override;
 };
 
 

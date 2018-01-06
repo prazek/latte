@@ -56,50 +56,51 @@ static bool isVoid(const Type& type) {
 antlrcpp::Any TypeChecker::visitEMulOp(LatteParser::EMulOpContext *ctx) {
   assert(ctx->children.size() == 3);
   auto *lhs = ctx->children.at(0);
-  Type *lhsType = visit(lhs);
+  Expr *lhsExpr = visit(lhs);
   auto *rhs = ctx->children.at(2);
-  Type* rhsType = visit(rhs);
+  Expr* rhsExpr = visit(rhs);
 
-  if (lhsType == nullptr || rhsType == nullptr)
-      return (Type*) nullptr;
+  auto *mulExpr = new MulExpr(getInt(), ctx->children.at(1)->getText()[0], lhsExpr, rhsExpr);
 
-  if (!isIntegral(*lhsType) || !isIntegral(*rhsType)) {
+  if (lhsExpr->type == nullptr || rhsExpr->type == nullptr)
+      return (Expr*)mulExpr;
+
+  if (!isIntegral(*lhsExpr->type) || !isIntegral(*rhsExpr->type)) {
     std::string op = ctx->children.at(1)->getText();
     context.diagnostic.issueError("Cannot perform operation '" + op
-                                    + "' on type '" + lhsType->toString() + "' and '"
-                                    + rhsType->toString() + "'", ctx);
+                                    + "' on type '" + lhsExpr->type->toString() + "' and '"
+                                    + rhsExpr->type->toString() + "'", ctx);
     return getInt();
   }
 
-  assert(*lhsType == *rhsType && "Only ints here");
+  assert(*lhsExpr->type == *rhsExpr->type && "Only ints here");
 
-  types[ctx] = lhsType;
-  return lhsType;
+  return lhsExpr->type;
 }
 
 antlrcpp::Any TypeChecker::visitEAddOp(LatteParser::EAddOpContext *ctx) {
   // TODO handle strings concat?
   assert(ctx->children.size() == 3);
   auto *lhs = ctx->children.at(0);
-  Type *lhsType = visit(lhs);
+  Expr *lhsExpr = visit(lhs);
   auto *rhs = ctx->children.at(2);
-  Type* rhsType = visit(rhs);
+  Expr* rhsExpr = visit(rhs);
 
-  if (lhsType == nullptr || rhsType == nullptr)
-    return (Type*) nullptr;
+  auto addExpr = new AddExpr(getInt(), ctx->children.at(1)->getText()[0], lhsExpr, rhsExpr);
 
-  if (!isIntegral(*lhsType) || !isIntegral(*rhsType)) {
+  if (lhsExpr->type == nullptr || lhsExpr->type == nullptr)
+    return (Expr*)addExpr;
+
+  if (!isIntegral(*lhsExpr->type) || !isIntegral(*rhsExpr->type)) {
     std::string op = ctx->children.at(1)->getText();
     context.diagnostic.issueError("Cannot perform operation '" + op
-                                    + "' on type '" + lhsType->toString() + "' and '"
-                                    + rhsType->toString() + "'", ctx);
-    return getInt();
+                                    + "' on type '" + lhsExpr->type->toString() + "' and '"
+                                    + rhsExpr->type->toString() + "'", ctx);
+    return (Expr*)addExpr;
   }
 
-  assert(*lhsType == *rhsType && "Only ints here");
-
-  types[ctx] = lhsType;
-  return lhsType;
+  assert(*lhsExpr->type == *rhsExpr->type && "Only ints here");
+  return (Expr*)addExpr;
 }
 
 antlrcpp::Any TypeChecker::visitERelOp(LatteParser::ERelOpContext *ctx) {
@@ -125,7 +126,6 @@ antlrcpp::Any TypeChecker::visitERelOp(LatteParser::ERelOpContext *ctx) {
 
   auto * retType = getBool();
 
-  types[ctx] = retType;
   return retType;
 }
 
@@ -133,7 +133,7 @@ antlrcpp::Any TypeChecker::visitERelOp(LatteParser::ERelOpContext *ctx) {
 antlrcpp::Any TypeChecker::visitAss(LatteParser::AssContext *ctx) {
   assert(ctx->children.size() == 4);
   auto *rhs = ctx->children.at(2);
-  Type *rhsType = visit(rhs);
+  Expr *rhsExpr = visit(rhs);
   std::string varName = ctx->children.at(0)->getText();
 
   if (!variableScope.findVariableType(varName)) {
@@ -141,16 +141,16 @@ antlrcpp::Any TypeChecker::visitAss(LatteParser::AssContext *ctx) {
     return (Type*)nullptr;
   }
 
-  if (*variableScope.findVariableType(varName) != *rhsType) {
+  if (*variableScope.findVariableType(varName) != *rhsExpr->type) {
     context.diagnostic.issueError("Cannot assign expression of type '"
-                                    + rhsType->toString()
+                                    + rhsExpr->type->toString()
                                     + "' to variable of type '"
                                     + variableScope.findVariableType(varName)->toString() + "'" , ctx);
     return (Type*)nullptr;
   }
 
-  types[ctx] = rhsType;
-  return rhsType;
+
+  return (Stmt*)new AssignStmt(std::move(varName), rhsExpr);
 }
 
 antlrcpp::Any TypeChecker::visitProgram(LatteParser::ProgramContext *ctx) {
@@ -160,7 +160,11 @@ antlrcpp::Any TypeChecker::visitProgram(LatteParser::ProgramContext *ctx) {
   LatteBaseVisitor::visitProgram(ctx);
 
   initialPass = false;
-  LatteBaseVisitor::visitProgram(ctx);
+
+  for (auto *children :ctx->children) {
+    ast.definitions.push_back(visit(children));
+  }
+  //LatteBaseVisitor::visitProgram(ctx);
   variableScope.closeScope();
   return {};
 }
@@ -168,7 +172,10 @@ antlrcpp::Any TypeChecker::visitProgram(LatteParser::ProgramContext *ctx) {
 antlrcpp::Any TypeChecker::visitFuncDef(LatteParser::FuncDefContext *ctx) {
   // type_ ID '(' arg? ')'
   std::string funName = ctx->children.at(1)->getText();
-  functionName[ctx] = funName;
+
+
+  auto *funDef = new FunctionDef;
+//  functionName[ctx] = funName;
 
   if (initialPass) {
     auto * funType = new FunctionType;
@@ -177,15 +184,16 @@ antlrcpp::Any TypeChecker::visitFuncDef(LatteParser::FuncDefContext *ctx) {
     if (!variableScope.addVariableType(funName, funType))
       context.diagnostic.issueError("redefinition of function '" + funName + "'", ctx);
 
-    if (ctx->children.size() == 6)
-      funType->argumentTypes = visit(ctx->children.at(3)).as<std::vector<Type*>>();
+    if (ctx->children.size() == 6) {
+     funDef->arguments =
+          visit(ctx->children.at(3)).as<std::vector<ArgDecl>>();
+    }
     else
       assert(ctx->children.size() == 5);
     return {};
   }
 
   auto *funType = cast<FunctionType>(variableScope.findVariableTypeCurrentScope(funName));
-  types[ctx] = funType;
 
   currentReturnType = funType->returnType;
 
@@ -195,37 +203,41 @@ antlrcpp::Any TypeChecker::visitFuncDef(LatteParser::FuncDefContext *ctx) {
     visit(ctx->children.at(3));
   else
     assert(ctx->children.size() == 5);
-  visit(ctx->children.back());
+  funDef->block = visit(ctx->children.back());
+
+  // TODO ogarnac function type
+  funDef->functionType = funType;
 
   variableScope.closeScope();
   return {};
 }
 
 antlrcpp::Any TypeChecker::visitArg(LatteParser::ArgContext *ctx) {
-  std::vector<Type*> argumentTypes;
+  std::vector<ArgDecl> arguments;
   for (unsigned i = 0; i < ctx->children.size(); i += 3) {
-    Type * argumentType = visit(ctx->children.at(i));
-    argumentTypes.push_back(argumentType);
+    ArgDecl decl;
+    decl.type = visit(ctx->children.at(i));
+    decl.name = ctx->children.at(i + 1)->getText();
+    arguments.push_back(decl);
     if (!initialPass) {
-      std::string argName = ctx->children.at(i+1)->getText();
-      if (!variableScope.addVariableType(argName, argumentType)) {
-        context.diagnostic.issueError("redefinition of function '" + argName + "'", ctx);
+      if (!variableScope.addVariableType(decl.name, decl.type)) {
+        context.diagnostic.issueError("redefinition of function '" + decl.name + "'", ctx);
       }
     }
   }
-  return argumentTypes;
+  return arguments;
 }
 
-antlrcpp::Any TypeChecker::visitEInt(LatteParser::EIntContext *) {
-  return getInt();
+antlrcpp::Any TypeChecker::visitEInt(LatteParser::EIntContext *ctx) {
+  return (Expr*)new ConstIntExpr(getInt(), std::stoi(ctx->getText()));
 }
 
 antlrcpp::Any TypeChecker::visitEFalse(LatteParser::EFalseContext *) {
-  return getBool();
+  return (Expr*) new BooleanExpr(getBool(), false);
 }
 
 antlrcpp::Any TypeChecker::visitETrue(LatteParser::ETrueContext *) {
-  return getBool();
+  return (Expr*) new BooleanExpr(getBool(), true);
 }
 
 antlrcpp::Any TypeChecker::visitEStr(LatteParser::EStrContext *) {
@@ -234,7 +246,11 @@ antlrcpp::Any TypeChecker::visitEStr(LatteParser::EStrContext *) {
 
 antlrcpp::Any TypeChecker::visitDecl(LatteParser::DeclContext *ctx) {
   assert(ctx->children.size() >= 3);
+
   Type *type = visit(ctx->children.at(0));
+  auto *declStmt = new DeclStmt;
+  declStmt->type = type;
+
   if (isVoid(*type)) {
     context.diagnostic.issueError(
       "Cannot initialize variable of type void", ctx);
@@ -244,22 +260,23 @@ antlrcpp::Any TypeChecker::visitDecl(LatteParser::DeclContext *ctx) {
   // Move i by 2 to skip commas.
   for (unsigned i = 1; i < ctx->children.size() - 1; i += 2) {
     auto *item = ctx->children.at(i);
-    std::pair<std::string, Type*> var = visit(item);
+    DeclItem declItem = visit(item);
+    declStmt->decls.push_back(declItem);
 
-    if (var.second != nullptr && *var.second != *type) {
+    if (declItem.initializer->type != nullptr && *declItem.initializer->type != *type) {
       context.diagnostic.issueError(
         "Cannot initialize variable '"
-          + var.first + "' of type '" + type->toString() +
-          "' with initializer of type '" + var.second->toString() + "'", ctx);
+          + declItem.name + "' of type '" + type->toString() +
+          "' with initializer of type '" + declItem.initializer->type->toString() + "'", ctx);
     }
 
-    if (!variableScope.addVariableType(var.first, type)) {
+    if (!variableScope.addVariableType(declItem.name, type)) {
       context.diagnostic.issueError(
-        "Variable '" + var.first + "' was already declared in this scope", ctx);
+        "Variable '" + declItem.name + "' was already declared in this scope", ctx);
     }
   }
-  types[ctx] = type;
-  return type;
+
+  return (Stmt*)declStmt;
 }
 
 antlrcpp::Any TypeChecker::visitItem(LatteParser::ItemContext *ctx) {
@@ -272,15 +289,19 @@ antlrcpp::Any TypeChecker::visitItem(LatteParser::ItemContext *ctx) {
     // this way if variable used on lhs was previously registered then it will
     // not find it and raise an error.
     Type * rollbackType = variableScope.temporariryUnregister(varName);
-    Type * type = visit(ctx->children.at(2));
+    Expr * expr = visit(ctx->children.at(2));
     variableScope.registerBack(varName, rollbackType);
-    return std::make_pair(varName, type);
+    return DeclItem{varName, expr};
   }
-  return std::make_pair(varName, (Type*)nullptr);
+  return DeclItem{varName, nullptr};
 }
 antlrcpp::Any TypeChecker::visitEId(LatteParser::EIdContext *ctx) {
   assert(ctx->children.size() == 1);
-  return visitID(ctx->children.front()->getText(), ctx);
+
+  auto name = ctx->children.front()->getText();
+  auto *type = visitID(name, ctx);
+
+  return (Expr*)new VarExpr(type, name);
 }
 
 
@@ -310,6 +331,7 @@ antlrcpp::Any TypeChecker::visitDecr(LatteParser::DecrContext *ctx) {
 }
 
 Type *TypeChecker::visitID(const std::string &varName, antlr4::ParserRuleContext *ctx) {
+
   if (!variableScope.findVariableType(varName)) {
     context.diagnostic.issueError("Use of undeclared variable '" + varName + "'", ctx);
     return (Type*) nullptr;
@@ -348,7 +370,6 @@ Type *TypeChecker::handleBinaryBooleans(LatteParser::ExprContext *ctx) {
   }
 
   assert(*lhsType == *rhsType && "Only boolean here");
-  types[ctx] = lhsType;
   return lhsType;
 }
 
@@ -377,9 +398,13 @@ antlrcpp::Any TypeChecker::visitEUnOp(LatteParser::EUnOpContext *ctx) {
 
 antlrcpp::Any TypeChecker::visitBlock(LatteParser::BlockContext *ctx) {
   variableScope.openNewScope();
-  LatteBaseVisitor::visitBlock(ctx);
+  Block block;
+  assert(ctx->children.size() >= 2);
+  for (unsigned i = 1; i < ctx->children.size() - 1; i++) {
+    block.stmts.push_back(visit(ctx->children.at(i)));
+  }
   variableScope.closeScope();
-  return {};
+  return block;
 }
 
 antlrcpp::Any TypeChecker::visitEParen(LatteParser::EParenContext *ctx) {
@@ -534,5 +559,17 @@ antlrcpp::Any TypeChecker::visitClassDef(LatteParser::ClassDefContext *ctx) {
 
 
   return (Type*)classType;
+}
+antlrcpp::Any TypeChecker::visitEmpty(LatteParser::EmptyContext *) {
+  return (Stmt*)new EmptyStmt;
+}
+antlrcpp::Any TypeChecker::visitBlockStmt(LatteParser::BlockStmtContext *ctx) {
+  auto * stmt = new BlockStmt;
+  stmt->block = visit(ctx->children.front());
+  return (Stmt*)stmt;
+}
+antlrcpp::Any TypeChecker::visitSExp(LatteParser::SExpContext *ctx) {
+  Expr *expr = visit(ctx->children.front());
+  return (Stmt*)new ExprStmt(expr);
 }
 

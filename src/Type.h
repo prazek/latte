@@ -1,9 +1,12 @@
 #pragma once
-#include <memory>
-#include <vector>
+
 #include "Utilities.h"
 #include "llvm/IR/Type.h"
 #include "llvm/IR/DerivedTypes.h"
+#include <memory>
+#include <vector>
+#include <sstream>
+#include <unordered_map>
 
 class SimpleType;
 class FunctionType;
@@ -104,6 +107,7 @@ public:
     case POD::String:
       return llvm::Type::getInt8PtrTy(c);
     }
+    assert(false);
   }
 
   POD getPOD() const { return pod; }

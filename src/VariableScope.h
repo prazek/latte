@@ -15,7 +15,6 @@ public:
     varTypes.pop_back();
   }
 
-  [[nodiscard]]
   bool addVariableType(std::string name, Storage type)  {
     if (findVariableTypeCurrentScope(name))
       return false;

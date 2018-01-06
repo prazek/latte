@@ -56,7 +56,7 @@ int main(int argc, const char* argv[]) {
 
 
   LLVMCodeGen codeGen(typeChecker);
-  codeGen.visit(program);
+  codeGen.visitAST(typeChecker.ast);
 
   codeGen.module->print(llvm::errs(), nullptr);
 

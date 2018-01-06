@@ -7,22 +7,20 @@
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/DerivedTypes.h"
 #include "llvm/IR/Function.h"
-#include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/Module.h"
 
 #include "llvm/IR/Verifier.h"
 
-//using namespace llvm;
 
+llvm::Value *LLVMCodeGen::visitAST(AST &ast) {
 
-antlrcpp::Any LLVMCodeGen::visitProgram(LatteParser::ProgramContext *ctx) {
-  return LatteBaseVisitor::visitProgram(ctx);
 }
-antlrcpp::Any LLVMCodeGen::visitFuncDef(LatteParser::FuncDefContext *ctx) {
-  //FunctionType *ft = TypeBuilder<types::i<8>(types::i<32>*), true>::get();
+llvm::Value *LLVMCodeGen::visitDef(Def &def) {
 
-  auto *astFunType = cast<FunctionType>(typeChecker.types.at(ctx));
+}
+llvm::Value *LLVMCodeGen::visitFunctionDef(FunctionDef &functionDef) {
+  /*auto *astFunType = cast<FunctionType>(typeChecker.types.at(ctx));
   auto *funType = llvm::cast<llvm::FunctionType>(astFunType->toLLVMType(module->getContext()));
 
   llvm::Function *function  =
@@ -34,151 +32,83 @@ antlrcpp::Any LLVMCodeGen::visitFuncDef(LatteParser::FuncDefContext *ctx) {
   // TODO visit arguments.
   currentFunction = function;
   llvm::BasicBlock *bb = llvm::BasicBlock::Create(module->getContext(), "entry", function);
-
   builder.SetInsertPoint(bb);
+
+
+  variableScope.openNewScope();
 
   visit(ctx->children.back());
 
+  variableScope.closeScope();
   //llvm::Function *= module->getOrInsertFunction(typeChecker.functionName[ctx], funType);
 
-  return {};
+  return {}; */
 }
+llvm::Value *LLVMCodeGen::visitClassDef(ClassDef &classDef) {
+  return nullptr;
+}
+llvm::Value *LLVMCodeGen::visitBlock(Block &block) {
 
-antlrcpp::Any LLVMCodeGen::visitClassDef(LatteParser::ClassDefContext *ctx) {
-  return LatteBaseVisitor::visitClassDef(ctx);
 }
-antlrcpp::Any LLVMCodeGen::visitItemVarDecl(LatteParser::ItemVarDeclContext *ctx) {
-  return LatteBaseVisitor::visitItemVarDecl(ctx);
-}
-antlrcpp::Any LLVMCodeGen::visitItemMethodDef(LatteParser::ItemMethodDefContext *ctx) {
-  return LatteBaseVisitor::visitItemMethodDef(ctx);
-}
-antlrcpp::Any LLVMCodeGen::visitArg(LatteParser::ArgContext *ctx) {
-  return LatteBaseVisitor::visitArg(ctx);
-}
-antlrcpp::Any LLVMCodeGen::visitBlock(LatteParser::BlockContext *ctx) {
-  return LatteBaseVisitor::visitBlock(ctx);
-}
-antlrcpp::Any LLVMCodeGen::visitEmpty(LatteParser::EmptyContext *ctx) {
-  return LatteBaseVisitor::visitEmpty(ctx);
-}
-antlrcpp::Any LLVMCodeGen::visitBlockStmt(LatteParser::BlockStmtContext *ctx) {
-  return LatteBaseVisitor::visitBlockStmt(ctx);
-}
-antlrcpp::Any LLVMCodeGen::visitDecl(LatteParser::DeclContext *ctx) {
+llvm::Value *LLVMCodeGen::visitStmt(Stmt &stmt) {
 
+}
+llvm::Value *LLVMCodeGen::visitBlockStmt(BlockStmt &blockStmt) {
+
+}
+llvm::Value *LLVMCodeGen::visitDeclStmt(DeclStmt &declStmt) {
+
+
+  /*  auto *item = ctx->children.at(i);
+    std::pair<std::string, llvm::Value*> var = visit(item);
+    variableScope.addVariableType(var.first, var.second);*/
+}
+llvm::Value *LLVMCodeGen::visitDeclItem(DeclItem &declItem) {
+  /*assert(ctx->children.size() == 1 || ctx->children.size() == 3);
+  std::string varName = ctx->children.at(0)->getText();
   llvm::Type * Type = typeChecker.types.at(ctx)->toLLVMType(module->getContext());
   llvm::Instruction *instruction = builder.CreateAlloca(Type);
 
+  if (ctx->children.size() == 3) {
+    // TODO
+    llvm::Instruction* inst = visit(ctx->children.at(2));
 
+    return std::make_pair(varName, (llvm::Value*)inst);
+  }
+  return std::make_pair(varName, (llvm::Value*)instruction);*/
+}
+llvm::Value *LLVMCodeGen::visitAssignStmt(AssignStmt &assignStmt) {
+  llvm::Value* rhs = visitExpr(*assignStmt.initializer);
 
+  llvm::Value* var = variableScope.findVariableType(assignStmt.name);
+  return builder.CreateStore(rhs, var);
+}
+llvm::Value *LLVMCodeGen::visitExprStmt(ExprStmt &exprStmt) {
 
 }
-antlrcpp::Any LLVMCodeGen::visitAss(LatteParser::AssContext *ctx) {
-  return LatteBaseVisitor::visitAss(ctx);
+llvm::Value *LLVMCodeGen::visitExpr(Expr &expr) {
+
 }
-antlrcpp::Any LLVMCodeGen::visitIncr(LatteParser::IncrContext *ctx) {
-  return LatteBaseVisitor::visitIncr(ctx);
+llvm::Value *LLVMCodeGen::visitBinExpr(BinExpr &binExpr) {
+
 }
-antlrcpp::Any LLVMCodeGen::visitDecr(LatteParser::DecrContext *ctx) {
-  return LatteBaseVisitor::visitDecr(ctx);
+llvm::Value *LLVMCodeGen::visitMulExpr(MulExpr &mulExpr) {
+
 }
-antlrcpp::Any LLVMCodeGen::visitRet(LatteParser::RetContext *ctx) {
-  return LatteBaseVisitor::visitRet(ctx);
+llvm::Value *LLVMCodeGen::visitAddExpr(AddExpr &addExpr) {
+  llvm::Value *lhs = visitExpr(*addExpr.lhs);
+  llvm::Value *rhs = visitExpr(*addExpr.rhs);
+  return builder.CreateAdd(lhs, rhs);
 }
-antlrcpp::Any LLVMCodeGen::visitVRet(LatteParser::VRetContext *ctx) {
-  return LatteBaseVisitor::visitVRet(ctx);
+
+llvm::Value *LLVMCodeGen::visitVarExpr(VarExpr &varExpr) {
+  return nullptr;
 }
-antlrcpp::Any LLVMCodeGen::visitCond(LatteParser::CondContext *ctx) {
-  return LatteBaseVisitor::visitCond(ctx);
+llvm::Value *LLVMCodeGen::visitConstIntExpr(ConstIntExpr &constIntExpr) {
+
+  return (llvm::Value*)llvm::ConstantInt::get(llvm::IntegerType::getInt32Ty(context),
+                                              constIntExpr.value);
 }
-antlrcpp::Any LLVMCodeGen::visitCondElse(LatteParser::CondElseContext *ctx) {
-  return LatteBaseVisitor::visitCondElse(ctx);
-}
-antlrcpp::Any LLVMCodeGen::visitWhile(LatteParser::WhileContext *ctx) {
-  return LatteBaseVisitor::visitWhile(ctx);
-}
-antlrcpp::Any LLVMCodeGen::visitSExp(LatteParser::SExpContext *ctx) {
-  return LatteBaseVisitor::visitSExp(ctx);
-}
-antlrcpp::Any LLVMCodeGen::visitInt(LatteParser::IntContext *ctx) {
-  return LatteBaseVisitor::visitInt(ctx);
-}
-antlrcpp::Any LLVMCodeGen::visitStr(LatteParser::StrContext *ctx) {
-  return LatteBaseVisitor::visitStr(ctx);
-}
-antlrcpp::Any LLVMCodeGen::visitBool(LatteParser::BoolContext *ctx) {
-  return LatteBaseVisitor::visitBool(ctx);
-}
-antlrcpp::Any LLVMCodeGen::visitVoid(LatteParser::VoidContext *ctx) {
-  return LatteBaseVisitor::visitVoid(ctx);
-}
-antlrcpp::Any LLVMCodeGen::visitClassName(LatteParser::ClassNameContext *ctx) {
-  return LatteBaseVisitor::visitClassName(ctx);
-}
-antlrcpp::Any LLVMCodeGen::visitItem(LatteParser::ItemContext *ctx) {
-  return LatteBaseVisitor::visitItem(ctx);
-}
-antlrcpp::Any LLVMCodeGen::visitEId(LatteParser::EIdContext *ctx) {
-  return LatteBaseVisitor::visitEId(ctx);
-}
-antlrcpp::Any LLVMCodeGen::visitEFunCall(LatteParser::EFunCallContext *ctx) {
-  return LatteBaseVisitor::visitEFunCall(ctx);
-}
-antlrcpp::Any LLVMCodeGen::visitERelOp(LatteParser::ERelOpContext *ctx) {
-  return LatteBaseVisitor::visitERelOp(ctx);
-}
-antlrcpp::Any LLVMCodeGen::visitETrue(LatteParser::ETrueContext *ctx) {
-  return LatteBaseVisitor::visitETrue(ctx);
-}
-antlrcpp::Any LLVMCodeGen::visitEOr(LatteParser::EOrContext *ctx) {
-  return LatteBaseVisitor::visitEOr(ctx);
-}
-antlrcpp::Any LLVMCodeGen::visitEInt(LatteParser::EIntContext *ctx) {
-  return LatteBaseVisitor::visitEInt(ctx);
-}
-antlrcpp::Any LLVMCodeGen::visitEMemberExpr(LatteParser::EMemberExprContext *ctx) {
-  return LatteBaseVisitor::visitEMemberExpr(ctx);
-}
-antlrcpp::Any LLVMCodeGen::visitEUnOp(LatteParser::EUnOpContext *ctx) {
-  return LatteBaseVisitor::visitEUnOp(ctx);
-}
-antlrcpp::Any LLVMCodeGen::visitEStr(LatteParser::EStrContext *ctx) {
-  return LatteBaseVisitor::visitEStr(ctx);
-}
-antlrcpp::Any LLVMCodeGen::visitEMulOp(LatteParser::EMulOpContext *ctx) {
-  return LatteBaseVisitor::visitEMulOp(ctx);
-}
-antlrcpp::Any LLVMCodeGen::visitEAnd(LatteParser::EAndContext *ctx) {
-  return LatteBaseVisitor::visitEAnd(ctx);
-}
-antlrcpp::Any LLVMCodeGen::visitEParen(LatteParser::EParenContext *ctx) {
-  return LatteBaseVisitor::visitEParen(ctx);
-}
-antlrcpp::Any LLVMCodeGen::visitEFalse(LatteParser::EFalseContext *ctx) {
-  return LatteBaseVisitor::visitEFalse(ctx);
-}
-antlrcpp::Any LLVMCodeGen::visitEAddOp(LatteParser::EAddOpContext *ctx) {
-  return LatteBaseVisitor::visitEAddOp(ctx);
-}
-antlrcpp::Any LLVMCodeGen::visitMemExpr(LatteParser::MemExprContext *ctx) {
-  return LatteBaseVisitor::visitMemExpr(ctx);
-}
-antlrcpp::Any LLVMCodeGen::visitMemCallrBasic(LatteParser::MemCallrBasicContext *ctx) {
-  return LatteBaseVisitor::visitMemCallrBasic(ctx);
-}
-antlrcpp::Any LLVMCodeGen::visitMemCallr(LatteParser::MemCallrContext *ctx) {
-  return LatteBaseVisitor::visitMemCallr(ctx);
-}
-antlrcpp::Any LLVMCodeGen::visitMemVar(LatteParser::MemVarContext *ctx) {
-  return LatteBaseVisitor::visitMemVar(ctx);
-}
-antlrcpp::Any LLVMCodeGen::visitAddOp(LatteParser::AddOpContext *ctx) {
-  return LatteBaseVisitor::visitAddOp(ctx);
-}
-antlrcpp::Any LLVMCodeGen::visitMulOp(LatteParser::MulOpContext *ctx) {
-  return LatteBaseVisitor::visitMulOp(ctx);
-}
-antlrcpp::Any LLVMCodeGen::visitRelOp(LatteParser::RelOpContext *ctx) {
-  return LatteBaseVisitor::visitRelOp(ctx);
+llvm::Value *LLVMCodeGen::visitBooleanExpr(BooleanExpr &booleanExpr) {
+  return nullptr;
 }

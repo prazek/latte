@@ -4,7 +4,7 @@ set(INSTC_LLVM_SOURCE_FILES "")
 set(antlr_files LatteBaseVisitor.cpp LatteBaseVisitor.h LatteParser.cpp LatteParser.h
         LatteLexer.cpp LatteLexer.h LatteVisitor.h LatteVisitor.cpp TypeChecker.cpp
         TypeChecker.h Type.h Utilities.h Diagnostic.cpp Diagnostic.h Context.cpp Context.h
-        LLVMCodeGen.cpp LLVMCodeGen.h VariableScope.h)
+        LLVMCodeGen.cpp LLVMCodeGen.h VariableScope.h AST.cpp AST.h ASTVisitor.cpp ASTVisitor.h)
 
 set(SOURCE_FILES ${SOURCE_FILES} ${INSTC_LLVM_SOURCE_FILES} ${antlr_files} main.cpp
         )
