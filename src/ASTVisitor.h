@@ -10,6 +10,7 @@ public:
   virtual T visitAST(AST& ast) {
     for (Def *def : ast.definitions)
       visitDef(*def);
+    return {};
   }
 
   virtual T visitDef(Def &def) {
@@ -60,7 +61,7 @@ public:
   virtual T visitDeclItem(DeclItem &declItem) = 0;
 
   virtual T visitAssignStmt(AssignStmt &assignStmt) {
-    visitExpr(*assignStmt.initializer);
+    return visitExpr(*assignStmt.initializer);
   }
 
   virtual T visitExprStmt(ExprStmt &exprStmt) {
@@ -76,6 +77,8 @@ public:
       return visitConstIntExpr(*constIntExpr);
     if (auto *booleanExpr = dyn_cast<BooleanExpr>(expr))
       return visitBooleanExpr(*booleanExpr);
+    assert(false);
+    return {};
   }
 
   virtual T visitBinExpr(BinExpr &binExpr) {
@@ -83,7 +86,8 @@ public:
       return visitMulExpr(*mulExpr);
     if (auto *addExpr = dyn_cast<AddExpr>(binExpr))
       return visitAddExpr(*addExpr);
-
+    assert(false);
+    return {};
   }
 
   virtual T visitMulExpr(MulExpr &mulExpr) {
@@ -101,8 +105,6 @@ public:
   virtual T visitVarExpr(VarExpr &varExpr) = 0;
   virtual T visitConstIntExpr(ConstIntExpr &constIntExpr) = 0;
   virtual T visitBooleanExpr(BooleanExpr &booleanExpr) = 0;
-
-
 
 };
 

@@ -34,7 +34,9 @@ struct Block {
 struct FunctionDef final : Def {
   FunctionType *functionType;
   std::vector<ArgDecl> arguments;
+  std::string name;
   Block block;
+
 
   std::string dump() const override {
     return "FunctionDef";
@@ -65,9 +67,12 @@ struct BlockStmt : public Stmt {
   }
 };
 
+struct DeclStmt;
+
 struct DeclItem {
   std::string name;
   Expr* initializer;
+  DeclStmt *parent;
 };
 
 struct DeclStmt : public Stmt {

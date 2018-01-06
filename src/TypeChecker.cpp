@@ -185,16 +185,19 @@ antlrcpp::Any TypeChecker::visitFuncDef(LatteParser::FuncDefContext *ctx) {
       context.diagnostic.issueError("redefinition of function '" + funName + "'", ctx);
 
     if (ctx->children.size() == 6) {
-     funDef->arguments =
+      funDef->arguments =
           visit(ctx->children.at(3)).as<std::vector<ArgDecl>>();
+      for (ArgDecl &argDecl : funDef->arguments) {
+        funType->argumentTypes.push_back(argDecl.type);
+      }
     }
-    else
+    else {
       assert(ctx->children.size() == 5);
+    }
     return {};
   }
 
   auto *funType = cast<FunctionType>(variableScope.findVariableTypeCurrentScope(funName));
-
   currentReturnType = funType->returnType;
 
   variableScope.openNewScope();
@@ -205,11 +208,12 @@ antlrcpp::Any TypeChecker::visitFuncDef(LatteParser::FuncDefContext *ctx) {
     assert(ctx->children.size() == 5);
   funDef->block = visit(ctx->children.back());
 
-  // TODO ogarnac function type
-  funDef->functionType = funType;
 
+
+  funDef->functionType = funType;
+  funDef->name = funName;
   variableScope.closeScope();
-  return {};
+  return (Def*)funDef;
 }
 
 antlrcpp::Any TypeChecker::visitArg(LatteParser::ArgContext *ctx) {
@@ -261,9 +265,10 @@ antlrcpp::Any TypeChecker::visitDecl(LatteParser::DeclContext *ctx) {
   for (unsigned i = 1; i < ctx->children.size() - 1; i += 2) {
     auto *item = ctx->children.at(i);
     DeclItem declItem = visit(item);
+    declItem.parent = declStmt;
     declStmt->decls.push_back(declItem);
 
-    if (declItem.initializer->type != nullptr && *declItem.initializer->type != *type) {
+    if (declItem.initializer != nullptr && *declItem.initializer->type != *type) {
       context.diagnostic.issueError(
         "Cannot initialize variable '"
           + declItem.name + "' of type '" + type->toString() +
