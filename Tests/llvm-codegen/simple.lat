@@ -1,3 +1,7 @@
+void gag(int a, int b) {
+
+}
+
 int foo() {
 
     int a = 5;
@@ -5,7 +9,7 @@ int foo() {
     boolean z = a == 3 || b == 4;
 
 
-/*    if (a == 5) {
+    if (a == 5) {
         b = 42;
     } else
         b = 43;
@@ -16,6 +20,10 @@ int foo() {
     while (a < 3) {
         a = a - 1;
     }
-*/
+
+    int g = foo();
+    gag(g, g);
     return a;
 }
+
+

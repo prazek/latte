@@ -1,5 +1,5 @@
 #pragma once
-
+#include <cassert>
 
 template <typename T, typename From>
 const T* dyn_cast(const From &param) {

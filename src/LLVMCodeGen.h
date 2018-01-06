@@ -12,10 +12,10 @@ public:
   // TODO file
       : typeChecker(typeChecker), builder(context), module(std::make_unique<llvm::Module>("file", context)){
   }
+  llvm::Value *visitCallExpr(CallExpr &callExpr) override;
 
   llvm::Value *visitFunctionDef(FunctionDef &functionDef) override;
   llvm::Value *visitClassDef(ClassDef &classDef) override;
-  llvm::Value *visitDeclItem(DeclItem &declItem) override;
   llvm::Value *visitAssignStmt(AssignStmt &assignStmt) override;
   llvm::Value *visitVarExpr(VarExpr &varExpr) override;
   llvm::Value *visitConstIntExpr(ConstIntExpr &constIntExpr) override;
@@ -24,17 +24,20 @@ public:
   llvm::Value *visitReturnStmt(ReturnStmt &returnStmt) override;
   llvm::Value *visitIfStmt(IfStmt &condStmt) override;
   llvm::Value *visitWhileStmt(WhileStmt &whileStmt) override;
+  llvm::Value *visitDeclStmt(DeclStmt &declStmt) override;
+  llvm::Value *visitIncrStmt(IncrStmt &incrStmt) override;
+  llvm::Value *visitDecrStmt(DecrStmt &incrStmt) override;
+  llvm::Value *visitUnaryExpr(UnaryExpr &unaryExpr) override;
 
 private:
+  llvm::Value *visitVarDecl(VarDecl &declItem);
   llvm::Value* handleAnd(BinExpr &andExpr);
   llvm::Value* handleOr(BinExpr &andExpr);
 
 
 private:
   llvm::Function *currentFunction = nullptr;
-  VariableScope<llvm::Value*> variableScope;
-
-
+  std::unordered_map<VarDecl*, llvm::Value*> varAddr;
   const TypeChecker &typeChecker;
 public:
   llvm::LLVMContext context;

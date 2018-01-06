@@ -14,30 +14,33 @@
 
 
 llvm::Value *LLVMCodeGen::visitFunctionDef(FunctionDef &functionDef) {
-  auto *funType = llvm::cast<llvm::FunctionType>(functionDef.functionType->toLLVMType(module->getContext()));
+  auto *funType = llvm::cast<llvm::FunctionType>(functionDef.getFunType()->toLLVMType(module->getContext()));
 
   llvm::Function *function  =
       llvm::Function::Create(funType,
                              llvm::Function::ExternalLinkage, functionDef.name,
                              module.get());
   currentFunction = function;
-  // Check if single scope
-  variableScope.openNewScope();
-  // TODO visit arguments.
-  for (ArgDecl & argDecl : functionDef.arguments) {
-    // TODO dodac argumenty
+  assert(functionDef.arguments.size() == function->arg_size());
 
-    //variableScope.addVariableType(argDecl.name, );
-  }
-
-  currentFunction = function;
   llvm::BasicBlock *bb = llvm::BasicBlock::Create(module->getContext(), "entry", function);
   builder.SetInsertPoint(bb);
 
+  int i = 0;
+  for (auto &arg : function->args()) {
+    auto *varDecl = functionDef.arguments.at(i++);
+    arg.setName(varDecl->name);
 
+    auto *alloca = builder.CreateAlloca(varDecl->type->toLLVMType(context));
+    // LOL
+    auto *stored = builder.CreateStore(alloca, arg.stripPointerCasts());
+    varAddr[varDecl] = stored;
+  }
+
+
+  currentFunction = function;
   visitBlock(functionDef.block);
 
-  variableScope.closeScope();
   return {};
 }
 
@@ -45,29 +48,30 @@ llvm::Value *LLVMCodeGen::visitClassDef(ClassDef &/*classDef*/) {
   return nullptr;
 }
 
-llvm::Value *LLVMCodeGen::visitDeclItem(DeclItem &declItem) {
+llvm::Value *LLVMCodeGen::visitVarDecl(VarDecl &declItem) {
 
-  llvm::Type * Type = declItem.parent->type->toLLVMType(module->getContext());
+  llvm::Type * Type = declItem.type->toLLVMType(module->getContext());
   auto *instruction = builder.CreateAlloca(Type);
-  variableScope.addVariableType(declItem.name, instruction);
 
   if (declItem.initializer) {
     llvm::Value* value = visitExpr(*declItem.initializer);
     builder.CreateStore(value, instruction);
   }
+
+  varAddr[&declItem] = instruction;
   return instruction;
 }
 
 llvm::Value *LLVMCodeGen::visitAssignStmt(AssignStmt &assignStmt) {
   llvm::Value* rhs = visitExpr(*assignStmt.initializer);
 
-  llvm::Value* var = variableScope.findVariableType(assignStmt.name);
+  llvm::Value* var = varAddr.at(assignStmt.decl);
   return builder.CreateStore(rhs, var);
 }
 
 
 llvm::Value *LLVMCodeGen::visitVarExpr(VarExpr &varExpr) {
-  auto *value = variableScope.findVariableType(varExpr.name);
+  auto *value = varAddr.at(varExpr.decl);
   return builder.CreateLoad(value);
 }
 llvm::Value *LLVMCodeGen::visitConstIntExpr(ConstIntExpr &constIntExpr) {
@@ -158,6 +162,9 @@ llvm::Value *LLVMCodeGen::visitBinExpr(BinExpr &binExpr) {
     return builder.CreateAdd(lhs, rhs);
   case BinExpr::BinOp::Minus:
     return builder.CreateSub(lhs, rhs);
+  case BinExpr::BinOp::And:
+  case BinExpr::BinOp::Or:
+    break;
   }
 
   llvm_unreachable("Unhandled bin op");
@@ -212,4 +219,50 @@ llvm::Value *LLVMCodeGen::visitWhileStmt(WhileStmt &whileStmt) {
 
   builder.SetInsertPoint(after);
   return nullptr;
+}
+
+llvm::Value *LLVMCodeGen::visitDeclStmt(DeclStmt &declStmt) {
+  for (VarDecl *varDecl : declStmt.decls)
+    visitVarDecl(*varDecl);
+  return {};
+}
+
+llvm::Value *LLVMCodeGen::visitCallExpr(CallExpr &callExpr) {
+  llvm::Function *fun = module->getFunction(callExpr.callee->name);
+
+
+  llvm::SmallVector<llvm::Value*, 4> args;
+  for (Expr* arg : callExpr.arguments)
+    args.push_back(visitExpr(*arg));
+
+
+  return builder.CreateCall(fun, args);
+}
+
+llvm::Value *LLVMCodeGen::visitIncrStmt(IncrStmt &incrStmt) {
+  auto *addr = varAddr[incrStmt.varDecl];
+  auto *val = builder.CreateLoad(addr);
+  auto *newVal = builder.CreateAdd(
+      val, llvm::ConstantInt::get(llvm::IntegerType::getInt32Ty(context), 1));
+  return builder.CreateStore(addr, newVal);
+}
+
+llvm::Value *LLVMCodeGen::visitDecrStmt(DecrStmt &incrStmt) {
+  auto *addr = varAddr[incrStmt.varDecl];
+  auto *val = builder.CreateLoad(addr);
+  auto *newVal = builder.CreateSub(
+      val, llvm::ConstantInt::get(llvm::IntegerType::getInt32Ty(context), 1));
+  return builder.CreateStore(addr, newVal);
+
+}
+
+llvm::Value *LLVMCodeGen::visitUnaryExpr(UnaryExpr &unaryExpr) {
+  llvm::Value *value = visitExpr(*unaryExpr.expr);
+  switch (unaryExpr.unOp) {
+  case UnaryExpr::UnOp::Minus:
+    return builder.CreateSub(llvm::ConstantInt::get(llvm::IntegerType::getInt32Ty(context), 0), value);
+  case UnaryExpr::UnOp::Neg:
+    return builder.CreateXor(value, llvm::ConstantInt::getTrue(llvm::IntegerType::getInt1Ty(context)));
+  }
+  llvm_unreachable("Unhandled unary op");
 }

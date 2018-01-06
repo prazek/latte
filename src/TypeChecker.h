@@ -10,7 +10,7 @@ class TypeChecker : public LatteBaseVisitor {
 private:
   Context &context;
 
-  VariableScope<Type*> variableScope;
+  VariableScope<Def*> variableScope;
   bool initialPass;
   Type *currentReturnType;
 public:
@@ -89,7 +89,7 @@ public:
 
   Expr *handleBinaryBooleans(LatteParser::ExprContext *ctx, BinExpr::BinOp);
   Type *handleIncrOrDecr(LatteParser::StmtContext *ctx, const std::string &op);
-  Type* visitID(const std::string& varName, antlr4::ParserRuleContext *ctx);
+  Def* visitID(const std::string& varName, antlr4::ParserRuleContext *ctx);
   antlrcpp::Any visitEmpty(LatteParser::EmptyContext *ctx) override;
   antlrcpp::Any visitBlockStmt(LatteParser::BlockStmtContext *ctx) override;
   antlrcpp::Any visitSExp(LatteParser::SExpContext *ctx) override;

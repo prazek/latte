@@ -8,19 +8,17 @@ struct FunctionDef;
 struct Block;
 struct Stmt;
 struct Expr;
-
+struct VarDecl;
 
 struct AST {
   std::vector<Def*> definitions;
 };
 
 struct Def {
-  virtual std::string dump() const = 0;
-};
+  Def(Type *type) : type(type) {}
 
-struct ArgDecl {
   Type *type;
-  std::string name;
+  virtual std::string dump() const = 0;
 };
 
 struct Block {
@@ -32,11 +30,16 @@ struct Block {
 };
 
 struct FunctionDef final : Def {
-  FunctionType *functionType;
-  std::vector<ArgDecl> arguments;
+  FunctionDef(FunctionType *type, std::string name)
+      : Def(type), name(std::move(name)) {}
+
+  std::vector<VarDecl*> arguments;
   std::string name;
   Block block;
 
+  FunctionType *getFunType() {
+    return cast<FunctionType>(type);
+  }
 
   std::string dump() const override {
     return "FunctionDef";
@@ -44,6 +47,9 @@ struct FunctionDef final : Def {
 };
 
 struct ClassDef final : Def {
+  ClassDef() : Def(nullptr) {}
+
+
   std::string dump() const override {
     return "ClassDef";
   }
@@ -67,17 +73,21 @@ struct BlockStmt : public Stmt {
   }
 };
 
-struct DeclStmt;
+struct VarDecl final : Def {
+  VarDecl(std::string name, Type* type, Expr *initializer)
+      : Def(type), name(std::move(name)), initializer(initializer) {}
 
-struct DeclItem {
   std::string name;
   Expr* initializer;
-  DeclStmt *parent;
+
+  std::string dump() const override {
+    return "VarDecl: " + name;
+  }
 };
 
 struct DeclStmt : public Stmt {
   Type *type;
-  std::vector<DeclItem> decls;
+  std::vector<VarDecl*> decls;
 
   std::string dump() const override {
     return "DeclStmt";
@@ -86,9 +96,11 @@ struct DeclStmt : public Stmt {
 
 
 struct AssignStmt : Stmt {
-  AssignStmt(std::string name, Expr *expr) : name(std::move(name)),
-                                             initializer(expr) {}
-  std::string name;
+  AssignStmt(VarDecl *decl, Expr *expr)
+      : decl(decl),
+        initializer(expr) {}
+
+  VarDecl *decl;
   Expr *initializer;
 
 
@@ -96,6 +108,29 @@ struct AssignStmt : Stmt {
     return "AssignStmt";
   }
 };
+
+struct IncrStmt : Stmt {
+  IncrStmt(VarDecl *decl)
+      : varDecl(decl) {}
+
+  VarDecl *varDecl;
+
+  std::string dump() const override {
+    return "IncrStmt:";
+  }
+};
+
+struct DecrStmt : Stmt {
+  DecrStmt(VarDecl *decl)
+      : varDecl(decl) {}
+
+  VarDecl *varDecl;
+
+  std::string dump() const override {
+    return "IncrStmt:";
+  }
+};
+
 
 struct ReturnStmt : Stmt {
   ReturnStmt(Expr *expr) : expr(expr) {}
@@ -147,6 +182,22 @@ struct Expr {
   virtual std::string dump() const = 0;
 };
 
+struct UnaryExpr : Expr {
+  enum class UnOp : uint8_t {
+    Minus,
+    Neg
+  };
+
+  UnaryExpr(Type *type, UnOp unOp, Expr *expr)
+      : Expr(type), unOp(unOp), expr(expr) {}
+
+  UnOp unOp;
+  Expr *expr;
+  std::string dump() const override {
+    return "UnaryExpr:";
+  }
+};
+
 struct BinExpr : Expr {
   enum class BinOp : uint8_t {
     // Relation operators
@@ -185,11 +236,11 @@ struct BinExpr : Expr {
 };
 
 struct VarExpr : Expr {
-  VarExpr(Type* type, std::string name) : Expr(type), name(std::move(name)) {}
-  std::string name;
+  VarExpr(VarDecl *decl) : Expr(decl->type) , decl(decl){}
+  VarDecl *decl;
 
   std::string dump() const override {
-    return "VarExpr:" + name;
+    return "VarExpr:" + decl->name;
   }
 };
 
@@ -208,6 +259,30 @@ struct BooleanExpr : Expr {
 
   std::string dump() const override {
     return "BooleanExpr:" + value;
+  }
+};
+
+struct CallExpr : Expr {
+  CallExpr(FunctionDef *callee)
+      : Expr(callee->getFunType()->returnType), callee(callee) {}
+
+
+  std::vector<Expr*> arguments;
+  FunctionDef *callee;
+
+  std::string dump() const override {
+    return "CallExpr";
+  }
+};
+
+
+struct ParenExpr : Expr {
+  ParenExpr(Expr *expr) : Expr(expr->type) {}
+
+  Expr *expr;
+
+  std::string dump() const override {
+    return "ParenExpr:";
   }
 };
 
