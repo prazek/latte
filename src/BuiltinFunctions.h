@@ -13,7 +13,10 @@ public:
     static const std::vector<FunctionDef*> builtinFunctions =
         {getPrintFunction("printString", SimpleType::String()),
          getPrintFunction("printInt", SimpleType::Int()),
-         getPrintFunction("printBoolean", SimpleType::Bool())};
+         getReadFunction("readString", SimpleType::String()),
+         getReadFunction("readInt", SimpleType::Int()),
+         getErrorFunction()
+         };
     return builtinFunctions;
   }
 
@@ -22,9 +25,21 @@ private:
     auto *funType = new FunctionType;
     funType->returnType = SimpleType::Void();
     funType->argumentTypes.push_back(argType);
-    return new FunctionDef(funType, name);
+    return new FunctionDef(funType, std::move(name));
   };
 
+  static FunctionDef *getReadFunction(std::string name, Type *retType) {
+    auto *funType = new FunctionType;
+    funType->returnType = retType;
+    return new FunctionDef(funType, std::move(name));
+  }
+
+  static FunctionDef *getErrorFunction() {
+    auto *funType = new FunctionType;
+    funType->returnType = SimpleType::Void();
+    return new FunctionDef(funType, "error");
+
+  }
 };
 
 

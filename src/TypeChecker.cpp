@@ -157,23 +157,23 @@ antlrcpp::Any TypeChecker::visitAss(LatteParser::AssContext *ctx) {
   Expr *rhsExpr = visit(rhs);
   std::string varName = ctx->children.at(0)->getText();
 
-  if (!variableScope.findVariableType(varName)) {
+  if (!variableScope.findName(varName)) {
     context.diagnostic.issueError("Use of undeclared variable '" + varName + "'", ctx);
     return (Stmt*)new AssignStmt(nullptr, rhsExpr);
   }
 
-  if (*variableScope.findVariableType(varName)->type != *rhsExpr->type) {
+  if (*variableScope.findName(varName)->type != *rhsExpr->type) {
     context.diagnostic.issueError("Cannot assign expression of type '"
                                     + rhsExpr->type->toString()
                                     + "' to variable of type '"
-                                    + variableScope.findVariableType(varName)->type->toString() + "'" , ctx);
+                                    + variableScope.findName(varName)->type->toString() + "'" , ctx);
     return (Stmt*)new AssignStmt(nullptr, rhsExpr);
   }
 
-  if (auto *varDecl = dyn_cast<VarDecl>(variableScope.findVariableType(varName)))
+  if (auto *varDecl = dyn_cast<VarDecl>(variableScope.findName(varName)))
     return (Stmt*)new AssignStmt(varDecl, rhsExpr);
 
-  context.diagnostic.issueError("Type " + variableScope.findVariableType(varName)->type->toString()
+  context.diagnostic.issueError("Type " + variableScope.findName(varName)->type->toString()
       + " is not assignable", ctx);
 
   return (Stmt*)new AssignStmt(nullptr, rhsExpr);
@@ -184,8 +184,10 @@ antlrcpp::Any TypeChecker::visitProgram(LatteParser::ProgramContext *ctx) {
   variableScope.openNewScope();
   initialPass = true;
 
-  for (FunctionDef * def : BuiltinFunctions::getBuiltinFunctions())
-    variableScope.addVariableType(def->name, def);
+  for (FunctionDef * def : BuiltinFunctions::getBuiltinFunctions()) {
+    bool isNew = variableScope.addName(def->name, def);
+    assert(isNew);
+  }
 
   LatteBaseVisitor::visitProgram(ctx);
 
@@ -208,7 +210,7 @@ antlrcpp::Any TypeChecker::visitFuncDef(LatteParser::FuncDefContext *ctx) {
     auto * funType = new FunctionType;
     funType->returnType = visit(ctx->children.front());
 
-    if (!variableScope.addVariableType(funName, funDef))
+    if (!variableScope.addName(funName, funDef))
       context.diagnostic.issueError("redefinition of function '" + funName + "'", ctx);
 
     if (ctx->children.size() == 6) {
@@ -225,7 +227,7 @@ antlrcpp::Any TypeChecker::visitFuncDef(LatteParser::FuncDefContext *ctx) {
     return {};
   }
 
-  auto *funDef = cast<FunctionDef>(variableScope.findVariableTypeCurrentScope(funName));
+  auto *funDef = cast<FunctionDef>(variableScope.findNameInCurrentScope(funName));
   currentReturnType = funDef->getFunType()->returnType;
 
   variableScope.openNewScope();
@@ -250,7 +252,7 @@ antlrcpp::Any TypeChecker::visitArg(LatteParser::ArgContext *ctx) {
 
     arguments.push_back(decl);
     if (!initialPass) {
-      if (!variableScope.addVariableType(decl->name, decl)) {
+      if (!variableScope.addName(decl->name, decl)) {
         context.diagnostic.issueError("redefinition of argument '" + decl->name + "'", ctx);
       }
     }
@@ -302,7 +304,7 @@ antlrcpp::Any TypeChecker::visitDecl(LatteParser::DeclContext *ctx) {
           "' with initializer of type '" + declItem->initializer->type->toString() + "'", ctx);
     }
 
-    if (!variableScope.addVariableType(declItem->name, declItem)) {
+    if (!variableScope.addName(declItem->name, declItem)) {
       context.diagnostic.issueError(
         "Variable '" + declItem->name + "' was already declared in this scope", ctx);
     }
@@ -320,9 +322,9 @@ antlrcpp::Any TypeChecker::visitItem(LatteParser::ItemContext *ctx) {
     // To do this, we firstly unregister the variable having the same name,
     // this way if variable used on lhs was previously registered then it will
     // not find it and raise an error.
-    auto * rollbackDef = variableScope.temporariryUnregister(varName);
+    auto * rollbackDef = variableScope.temporariryUnregisterName(varName);
     Expr * expr = visit(ctx->children.at(2));
-    variableScope.registerBack(varName, rollbackDef);
+    variableScope.registerBackName(varName, rollbackDef);
     return new VarDecl(varName, nullptr, expr);
   }
   return new VarDecl(varName, nullptr, nullptr);
@@ -365,12 +367,12 @@ antlrcpp::Any TypeChecker::visitDecr(LatteParser::DecrContext *ctx) {
 
 Def *TypeChecker::visitID(const std::string &varName, antlr4::ParserRuleContext *ctx) {
 
-  if (!variableScope.findVariableType(varName)) {
+  if (!variableScope.findName(varName)) {
     context.diagnostic.issueError("Use of undeclared variable '" + varName + "'", ctx);
     return nullptr;
   }
 
-  return variableScope.findVariableType(varName);
+  return variableScope.findName(varName);
 }
 
 
@@ -571,7 +573,7 @@ antlrcpp::Any TypeChecker::visitClassDef(LatteParser::ClassDefContext *ctx) {
     classTypes[classType->name] = classType;
   }
 
-  if (variableScope.findVariableType(classType->name) != nullptr) {
+  if (variableScope.findName(classType->name) != nullptr) {
     context.diagnostic.issueError(
         "Duplicated name for '" + classType->name + "'", ctx);
   }

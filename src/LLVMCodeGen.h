@@ -32,7 +32,7 @@ private:
   llvm::Value *visitVarDecl(VarDecl &declItem);
   llvm::Value* handleAnd(BinExpr &andExpr);
   llvm::Value* handleOr(BinExpr &andExpr);
-
+  llvm::Value *defaultInitializer(Type *type);
 
 private:
   llvm::Function *currentFunction = nullptr;
@@ -42,6 +42,8 @@ private:
   llvm::LLVMContext &context;
   llvm::IRBuilder<> builder;
   llvm::Module &module;
+  llvm::Value *getString(const std::string& string);
+  llvm::Value *getEmptyString();
 };
 
 

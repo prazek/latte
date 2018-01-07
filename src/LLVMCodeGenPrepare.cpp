@@ -1,7 +1,7 @@
-
-
 #include "LLVMCodeGenPrepare.h"
 #include "BuiltinFunctions.h"
+
+
 void LLVMCodeGenPrepare::visitAST(AST &ast) {
   for (FunctionDef * functionDef : BuiltinFunctions::getBuiltinFunctions()) {
     auto *funType = llvm::cast<llvm::FunctionType>(functionDef->getFunType()->toLLVMType(module.getContext()));

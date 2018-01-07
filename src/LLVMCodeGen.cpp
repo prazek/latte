@@ -42,15 +42,32 @@ llvm::Value *LLVMCodeGen::visitClassDef(ClassDef &/*classDef*/) {
   return nullptr;
 }
 
+llvm::Value *LLVMCodeGen::defaultInitializer(Type *type) {
+  if (auto *simpleType = dyn_cast<SimpleType>(type)) {
+    if (simpleType->isBool())
+      return llvm::ConstantInt::getFalse(llvm::IntegerType::getInt1Ty(context));
+    if (simpleType->isInt())
+      return llvm::ConstantInt::get(llvm::IntegerType::getInt32Ty(context), 0);
+    if (simpleType->isString())
+      return getEmptyString();
+    llvm_unreachable("No other initializers for simple types");
+  }
+  llvm_unreachable("Unhandled type");
+}
+
 llvm::Value *LLVMCodeGen::visitVarDecl(VarDecl &declItem) {
 
   llvm::Type * Type = declItem.type->toLLVMType(module.getContext());
   auto *instruction = builder.CreateAlloca(Type);
 
-  if (declItem.initializer) {
-    llvm::Value* value = visitExpr(*declItem.initializer);
-    builder.CreateStore(value, instruction);
-  }
+  auto getInitializer = [&](VarDecl &declItem) {
+    if (declItem.initializer)
+      return visitExpr(*declItem.initializer);
+    return defaultInitializer(declItem.type);
+  };
+
+  llvm::Value* value = getInitializer(declItem);
+  builder.CreateStore(value, instruction);
 
   varAddr[&declItem] = instruction;
   return instruction;
@@ -92,8 +109,7 @@ llvm::Value* LLVMCodeGen::handleAnd(BinExpr &andExpr) {
 
   builder.SetInsertPoint(afterBlock);
   llvm::PHINode *phiInstr = builder.CreatePHI(llvm::IntegerType::getInt1Ty(context), 2);
-  phiInstr->addIncoming(llvm::ConstantInt::get(llvm::IntegerType::getInt1Ty(context),
-                                                 false), bb);
+  phiInstr->addIncoming(llvm::ConstantInt::getFalse(llvm::IntegerType::getInt1Ty(context)), bb);
 
   phiInstr->addIncoming(rhsVal, trueBlock);
   return phiInstr;
@@ -113,8 +129,7 @@ llvm::Value* LLVMCodeGen::handleOr(BinExpr &orExpr) {
 
   builder.SetInsertPoint(afterBlock);
   llvm::PHINode *phiInstr = builder.CreatePHI(llvm::IntegerType::getInt1Ty(context), 2);
-  phiInstr->addIncoming(llvm::ConstantInt::get(llvm::IntegerType::getInt1Ty(context),
-                                               true), bb);
+  phiInstr->addIncoming(llvm::ConstantInt::getTrue(llvm::IntegerType::getInt1Ty(context)), bb);
 
   phiInstr->addIncoming(rhsVal, falseBlock);
   return phiInstr;
@@ -262,19 +277,27 @@ llvm::Value *LLVMCodeGen::visitUnaryExpr(UnaryExpr &unaryExpr) {
 }
 llvm::Value *LLVMCodeGen::visitConstStringExpr(ConstStringExpr &constStringExpr) {
 
-  // TODO extra zero?
+  return getString(constStringExpr.string);
+
+}
+
+llvm::Value *LLVMCodeGen::getString(const std::string &string) {
   llvm::Type *type = llvm::ArrayType::get(llvm::Type::getInt8Ty(context),
-                                          constStringExpr.string.length());
-  llvm::Constant *initializer = llvm::ConstantDataArray::getString(context, constStringExpr.string, true);
+                                          string.length());
+  llvm::Constant *initializer = llvm::ConstantDataArray::getString(context, string, true);
   llvm::SmallVector<llvm::Value*, 2> const_ptr_5_indices;
   llvm::ConstantInt* const_int64_6 = llvm::ConstantInt::get(context, llvm::APInt(64, llvm::StringRef("0"), 10));
   const_ptr_5_indices.push_back(const_int64_6);
   const_ptr_5_indices.push_back(const_int64_6);
 
-
   auto *global = new llvm::GlobalVariable(module,
-                   type, true, llvm::GlobalValue::PrivateLinkage, initializer);
+                                          type, true, llvm::GlobalValue::PrivateLinkage, initializer);
 
   auto* const_ptr_5 = builder.CreateGEP(global, const_ptr_5_indices);
   return const_ptr_5;
+}
+
+llvm::Value *LLVMCodeGen::getEmptyString() {
+  static auto *strVal = getString("");
+  return strVal;
 }

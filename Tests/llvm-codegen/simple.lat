@@ -33,3 +33,9 @@ string str() {
     string s = "abc";
     return s;
 }
+
+void initializers() {
+    string s;
+    int z;
+    boolean b;
+}
