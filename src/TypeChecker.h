@@ -53,18 +53,14 @@ public:
   antlrcpp::Any visitEAddOp(LatteParser::EAddOpContext *ctx) override;
   antlrcpp::Any visitClassName(LatteParser::ClassNameContext *ctx) override;
   antlrcpp::Any visitClassDef(LatteParser::ClassDefContext *ctx) override;
-
-private:
-  Expr *handleBinaryBooleans(LatteParser::ExprContext *ctx, BinExpr::BinOp);
-  Type *handleIncrOrDecr(LatteParser::StmtContext *ctx, const std::string &op);
-  Def* visitID(const std::string& varName, antlr4::ParserRuleContext *ctx);
-
-
   antlrcpp::Any visitEmpty(LatteParser::EmptyContext *ctx) override;
   antlrcpp::Any visitBlockStmt(LatteParser::BlockStmtContext *ctx) override;
   antlrcpp::Any visitSExp(LatteParser::SExpContext *ctx) override;
 
-
+private:
+  Expr *handleBinaryBooleans(LatteParser::ExprContext *ctx, BinExpr::BinOp);
+  Stmt *handleIncrOrDecr(LatteParser::StmtContext *ctx, const std::string &op);
+  Def* visitID(const std::string& varName, antlr4::ParserRuleContext *ctx);
 };
 
 

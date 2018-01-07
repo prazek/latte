@@ -42,8 +42,6 @@ int main(int argc, const char* argv[]) {
   auto parsedFile = parseFileName(argv[1]);
   auto llvmFileName = parsedFile + ".ll";
   auto bcFileName = parsedFile + ".bc";
-  //std::fstream outFile(llvmFileName, std::ios_base::out);
-
 
   ANTLRInputStream input(file);
   LatteLexer lexer(&input);
@@ -64,7 +62,7 @@ int main(int argc, const char* argv[]) {
   LLVMCodeGenPrepare codeGenPrepare(*module);
   codeGenPrepare.visitAST(typeChecker.ast);
 
-  LLVMCodeGen codeGen(typeChecker, *module);
+  LLVMCodeGen codeGen(*module);
   codeGen.visitAST(typeChecker.ast);
   llvm::verifyModule(*module);
 

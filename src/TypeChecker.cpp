@@ -25,6 +25,14 @@ static bool isIntegral(const Type& type) {
   return false;
 }
 
+static bool isString(const Type& type) {
+  if (auto *st = dyn_cast<SimpleType>(type))
+    return st->isString();
+  return false;
+}
+
+
+
 static bool isBoolean(const Type& type) {
   if (auto *st = dyn_cast<SimpleType>(type))
     return st->isBool();
@@ -75,7 +83,6 @@ antlrcpp::Any TypeChecker::visitEMulOp(LatteParser::EMulOpContext *ctx) {
 }
 
 antlrcpp::Any TypeChecker::visitEAddOp(LatteParser::EAddOpContext *ctx) {
-  // TODO handle strings concat?
   assert(ctx->children.size() == 3);
   auto *lhs = ctx->children.at(0);
   Expr *lhsExpr = visit(lhs);
@@ -90,13 +97,16 @@ antlrcpp::Any TypeChecker::visitEAddOp(LatteParser::EAddOpContext *ctx) {
     llvm_unreachable("Unknown op");
   };
 
-  auto addExpr = new BinExpr(SimpleType::Int(), getAddOp(ctx->children.at(1)->getText()),
+  auto *addExpr = new BinExpr(SimpleType::Int(), getAddOp(ctx->children.at(1)->getText()),
                              lhsExpr, rhsExpr);
 
   if (lhsExpr->type == nullptr || lhsExpr->type == nullptr)
     return (Expr*)addExpr;
 
-  if (!isIntegral(*lhsExpr->type) || !isIntegral(*rhsExpr->type)) {
+
+  if (!(isIntegral(*lhsExpr->type) && isIntegral(*rhsExpr->type))
+      && !((isString(*lhsExpr->type) && isString(*rhsExpr->type)
+          && addExpr->binOp == BinExpr::BinOp::Add))) {
     std::string op = ctx->children.at(1)->getText();
     context.diagnostic.issueError("Cannot perform operation '" + op
                                     + "' on type '" + lhsExpr->type->toString() + "' and '"
@@ -104,7 +114,10 @@ antlrcpp::Any TypeChecker::visitEAddOp(LatteParser::EAddOpContext *ctx) {
     return (Expr*)addExpr;
   }
 
-  assert(*lhsExpr->type == *rhsExpr->type && "Only ints here");
+  assert(*lhsExpr->type == *rhsExpr->type && "Only ints and strings here");
+  if (isString(*lhsExpr->type))
+    addExpr->type = SimpleType::String();
+
   return (Expr*)addExpr;
 }
 
@@ -137,7 +150,7 @@ antlrcpp::Any TypeChecker::visitERelOp(LatteParser::ERelOpContext *ctx) {
   if (lhsExpr->type == nullptr || lhsExpr->type == nullptr)
     return (Expr*)binExpr;
 
-  // TODO handle string
+  // FIXME: We could also handle strings here.
   if (!isIntegral(*lhsExpr->type) || !isIntegral(*rhsExpr->type)) {
     std::string op = ctx->children.at(1)->getText();
     context.diagnostic.issueError("Cannot perform operation '" + op
@@ -341,20 +354,21 @@ antlrcpp::Any TypeChecker::visitEId(LatteParser::EIdContext *ctx) {
 }
 
 
-Type *TypeChecker::handleIncrOrDecr(LatteParser::StmtContext *ctx, const std::string &op) {
+Stmt *TypeChecker::handleIncrOrDecr(LatteParser::StmtContext *ctx, const std::string &op) {
   assert(ctx->children.size() == 3);
   VarDecl * varDecl = cast<VarDecl>(visitID(ctx->children.at(0)->getText(), ctx));
+
+  auto *incr = new IncrStmt(varDecl);
   if (varDecl->type == nullptr)
-    return nullptr; // TODO
+    return incr;
 
   if (!isIntegral(*varDecl->type)) {
     context.diagnostic.issueError("Can't perform operation " + op + " on variable '"
                                     + varDecl->name + "' having type '"
                                     + varDecl->type->toString() + "'", ctx);
-    return SimpleType::Int();
   }
 
-  return varDecl->type;
+  return incr;
 }
 
 antlrcpp::Any TypeChecker::visitIncr(LatteParser::IncrContext *ctx) {
@@ -375,7 +389,6 @@ Def *TypeChecker::visitID(const std::string &varName, antlr4::ParserRuleContext 
   return variableScope.findName(varName);
 }
 
-
 antlrcpp::Any TypeChecker::visitEOr(LatteParser::EOrContext *ctx) {
   return handleBinaryBooleans(ctx, BinExpr::BinOp::Or);
 }
@@ -383,7 +396,6 @@ antlrcpp::Any TypeChecker::visitEOr(LatteParser::EOrContext *ctx) {
 antlrcpp::Any TypeChecker::visitEAnd(LatteParser::EAndContext *ctx) {
   return handleBinaryBooleans(ctx, BinExpr::BinOp::And);
 }
-
 
 Expr *TypeChecker::handleBinaryBooleans(LatteParser::ExprContext *ctx,
                                         BinExpr::BinOp binOp) {
@@ -397,7 +409,6 @@ Expr *TypeChecker::handleBinaryBooleans(LatteParser::ExprContext *ctx,
   if (lhsExpr->type == nullptr || rhsExpr->type == nullptr)
     return binExpr;
 
-  // TODO handle string
   if (!isBoolean(*lhsExpr->type) || !isBoolean(*rhsExpr->type)) {
     std::string op = ctx->children.at(1)->getText();
     context.diagnostic.issueError("Cannot perform operation '" + op
@@ -559,6 +570,7 @@ antlrcpp::Any TypeChecker::visitClassName(LatteParser::ClassNameContext *ctx) {
 
   return (Type*)classTypes.at(typeName);
 }
+
 antlrcpp::Any TypeChecker::visitClassDef(LatteParser::ClassDefContext *ctx) {
   assert(4 <= ctx->children.size());
 
