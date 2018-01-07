@@ -303,14 +303,15 @@ antlrcpp::Any TypeChecker::visitItem(LatteParser::ItemContext *ctx) {
   assert(ctx->children.size() == 1 || ctx->children.size() == 3);
   const std::string& varName = ctx->children.at(0)->getText();
   if (ctx->children.size() == 3) {
+    // Unfortunatelly we cannot use the semantics as shown below
     // We want to disallow stmt like:
     // int a = a;
     // To do this, we firstly unregister the variable having the same name,
     // this way if variable used on lhs was previously registered then it will
     // not find it and raise an error.
-    auto * rollbackDef = variableScope.temporariryUnregisterName(varName);
+    //auto * rollbackDef = variableScope.temporariryUnregisterName(varName);
     Expr * expr = visit(ctx->children.at(2));
-    variableScope.registerBackName(varName, rollbackDef);
+    //variableScope.registerBackName(varName, rollbackDef);
     return new VarDecl(varName, nullptr, expr);
   }
   return new VarDecl(varName, nullptr, nullptr);

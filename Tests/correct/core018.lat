@@ -5,7 +5,10 @@ int main() {
   string y = readString();
   string z = readString();
 
+
   printInt(x-5);
-  printString(y+z);  
+  printString(y);
+  printString(z);
+  printString(y+z);
   return 0 ;
 }
