@@ -27,3 +27,6 @@ int foo() {
 }
 
 
+void str() {
+    string s = "abc";
+}

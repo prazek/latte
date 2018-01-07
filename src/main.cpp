@@ -3,6 +3,7 @@
 #include "LatteParser.h"
 #include "TypeChecker.h"
 #include "LLVMCodeGen.h"
+#include "LLVMCodeGenPrepare.h"
 #include <string>
 #include <fstream>
 #include <llvm/Support/raw_ostream.h>
@@ -54,11 +55,16 @@ int main(int argc, const char* argv[]) {
   TypeChecker typeChecker(context);
   typeChecker.visit(program);
 
+  llvm::LLVMContext llvmContext;
+  std::unique_ptr<llvm::Module> module = std::make_unique<llvm::Module>("file", llvmContext);
 
-  LLVMCodeGen codeGen(typeChecker);
+  LLVMCodeGenPrepare codeGenPrepare(*module);
+  codeGenPrepare.visitAST(typeChecker.ast);
+
+  LLVMCodeGen codeGen(typeChecker, *module);
   codeGen.visitAST(typeChecker.ast);
 
-  codeGen.module->print(llvm::errs(), nullptr);
+  module->print(llvm::errs(), nullptr);
 
 
 }

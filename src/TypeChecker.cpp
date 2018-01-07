@@ -281,8 +281,9 @@ antlrcpp::Any TypeChecker::visitETrue(LatteParser::ETrueContext *) {
   return (Expr*) new BooleanExpr(getBool(), true);
 }
 
-antlrcpp::Any TypeChecker::visitEStr(LatteParser::EStrContext *) {
-  return getStr();
+antlrcpp::Any TypeChecker::visitEStr(LatteParser::EStrContext *ctx) {
+  std::string str = ctx->getText().substr(1, ctx->getText().size() - 2);
+  return (Expr*) new ConstStringExpr(getStr(), std::move(str));
 }
 
 antlrcpp::Any TypeChecker::visitDecl(LatteParser::DeclContext *ctx) {

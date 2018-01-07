@@ -10,7 +10,7 @@ public:
   virtual T visitAST(AST& ast) {
     for (Def *def : ast.definitions)
       visitDef(*def);
-    return {};
+    return T();
   }
 
   virtual T visitDef(Def &def) {
@@ -19,7 +19,7 @@ public:
     if (auto *classDef = dyn_cast<ClassDef>(def))
       return visitClassDef(*classDef);
     assert(false);
-    return {};
+    return T();
   }
 
   virtual T visitFunctionDef(FunctionDef &functionDef) = 0;
@@ -28,13 +28,13 @@ public:
   virtual T visitBlock(Block &block) {
     for (Stmt* stmt : block.stmts)
       visitStmt(*stmt);
-    return {};
+    return T();
   }
 
 
   virtual T visitStmt(Stmt &stmt) {
     if (isa<EmptyStmt>(stmt))
-      return {};
+      return T();
     if (auto *blockStmt = dyn_cast<BlockStmt>(stmt))
       return visitBlockStmt(*blockStmt);
     if (auto *declStmt = dyn_cast<DeclStmt>(stmt))
@@ -88,9 +88,10 @@ public:
       return visitBooleanExpr(*booleanExpr);
     if (auto *callExpr = dyn_cast<CallExpr>(expr))
       return visitCallExpr(*callExpr);
+    if (auto *constStringExpr = dyn_cast<ConstStringExpr>(expr))
+      return visitConstStringExpr(*constStringExpr);
     if (auto *parenExpr = dyn_cast<ParenExpr>(expr))
       return visitParenExpr(*parenExpr);
-
     llvm_unreachable("Unhandled expr");
   }
 
@@ -100,7 +101,7 @@ public:
   virtual T visitConstIntExpr(ConstIntExpr &constIntExpr) = 0;
   virtual T visitBooleanExpr(BooleanExpr &booleanExpr) = 0;
   virtual T visitCallExpr(CallExpr &callExpr) = 0;
-
+  virtual T visitConstStringExpr(ConstStringExpr &constStringExpr) = 0;
   virtual T visitParenExpr(ParenExpr &parenExpr) {
     return visitExpr(*parenExpr.expr);
   }

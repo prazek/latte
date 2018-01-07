@@ -14,16 +14,16 @@
 
 
 llvm::Value *LLVMCodeGen::visitFunctionDef(FunctionDef &functionDef) {
-  auto *funType = llvm::cast<llvm::FunctionType>(functionDef.getFunType()->toLLVMType(module->getContext()));
+  auto *funType = llvm::cast<llvm::FunctionType>(functionDef.getFunType()->toLLVMType(context));
 
   llvm::Function *function  =
       llvm::Function::Create(funType,
                              llvm::Function::ExternalLinkage, functionDef.name,
-                             module.get());
+                             &module);
   currentFunction = function;
   assert(functionDef.arguments.size() == function->arg_size());
 
-  llvm::BasicBlock *bb = llvm::BasicBlock::Create(module->getContext(), "entry", function);
+  llvm::BasicBlock *bb = llvm::BasicBlock::Create(context, "entry", function);
   builder.SetInsertPoint(bb);
 
   int i = 0;
@@ -50,7 +50,7 @@ llvm::Value *LLVMCodeGen::visitClassDef(ClassDef &/*classDef*/) {
 
 llvm::Value *LLVMCodeGen::visitVarDecl(VarDecl &declItem) {
 
-  llvm::Type * Type = declItem.type->toLLVMType(module->getContext());
+  llvm::Type * Type = declItem.type->toLLVMType(module.getContext());
   auto *instruction = builder.CreateAlloca(Type);
 
   if (declItem.initializer) {
@@ -87,8 +87,8 @@ llvm::Value *LLVMCodeGen::visitBooleanExpr(BooleanExpr &booleanExpr) {
 llvm::Value* LLVMCodeGen::handleAnd(BinExpr &andExpr) {
   auto *lhsVal = visitExpr(*andExpr.lhs);
   llvm::BasicBlock* bb = builder.GetInsertBlock();
-  auto *trueBlock = llvm::BasicBlock::Create(module->getContext(), "cond.rhs", currentFunction);
-  auto *afterBlock = llvm::BasicBlock::Create(module->getContext(), "", currentFunction);
+  auto *trueBlock = llvm::BasicBlock::Create(module.getContext(), "cond.rhs", currentFunction);
+  auto *afterBlock = llvm::BasicBlock::Create(module.getContext(), "", currentFunction);
 
   builder.CreateCondBr(lhsVal, trueBlock, afterBlock);
 
@@ -108,8 +108,8 @@ llvm::Value* LLVMCodeGen::handleAnd(BinExpr &andExpr) {
 llvm::Value* LLVMCodeGen::handleOr(BinExpr &orExpr) {
   auto *lhsVal = visitExpr(*orExpr.lhs);
   llvm::BasicBlock* bb = builder.GetInsertBlock();
-  auto *falseBlock = llvm::BasicBlock::Create(module->getContext(), "cond.rhs", currentFunction);
-  auto *afterBlock = llvm::BasicBlock::Create(module->getContext(), "", currentFunction);
+  auto *falseBlock = llvm::BasicBlock::Create(module.getContext(), "cond.rhs", currentFunction);
+  auto *afterBlock = llvm::BasicBlock::Create(module.getContext(), "", currentFunction);
 
   builder.CreateCondBr(lhsVal, afterBlock, falseBlock);
 
@@ -178,9 +178,9 @@ llvm::Value *LLVMCodeGen::visitReturnStmt(ReturnStmt &returnStmt) {
 }
 llvm::Value *LLVMCodeGen::visitIfStmt(IfStmt &condStmt) {
 
-  llvm::BasicBlock *labTrue = llvm::BasicBlock::Create(module->getContext(), "if", currentFunction);
+  llvm::BasicBlock *labTrue = llvm::BasicBlock::Create(module.getContext(), "if", currentFunction);
   std::string nextBlockName = condStmt.elseStmt == nullptr ? "" : "else";
-  llvm::BasicBlock *labFalse = llvm::BasicBlock::Create(module->getContext(), nextBlockName, currentFunction);
+  llvm::BasicBlock *labFalse = llvm::BasicBlock::Create(module.getContext(), nextBlockName, currentFunction);
 
   llvm::Value *cmp = visitExpr(*condStmt.condition);
   builder.CreateCondBr(cmp, labTrue, labFalse);
@@ -190,7 +190,7 @@ llvm::Value *LLVMCodeGen::visitIfStmt(IfStmt &condStmt) {
 
   if (condStmt.elseStmt) {
     labAfter =
-        llvm::BasicBlock::Create(module->getContext(), "", currentFunction);
+        llvm::BasicBlock::Create(module.getContext(), "", currentFunction);
 
     builder.CreateBr(labAfter);
     builder.SetInsertPoint(labFalse);
@@ -203,9 +203,9 @@ llvm::Value *LLVMCodeGen::visitIfStmt(IfStmt &condStmt) {
 
 llvm::Value *LLVMCodeGen::visitWhileStmt(WhileStmt &whileStmt) {
 
-  llvm::BasicBlock *condBlock = llvm::BasicBlock::Create(module->getContext(), "loop.cond", currentFunction);
-  llvm::BasicBlock *loopBlock = llvm::BasicBlock::Create(module->getContext(), "loop", currentFunction);
-  llvm::BasicBlock *after = llvm::BasicBlock::Create(module->getContext(), "", currentFunction);
+  llvm::BasicBlock *condBlock = llvm::BasicBlock::Create(module.getContext(), "loop.cond", currentFunction);
+  llvm::BasicBlock *loopBlock = llvm::BasicBlock::Create(module.getContext(), "loop", currentFunction);
+  llvm::BasicBlock *after = llvm::BasicBlock::Create(module.getContext(), "", currentFunction);
 
   builder.CreateBr(condBlock);
 
@@ -228,7 +228,7 @@ llvm::Value *LLVMCodeGen::visitDeclStmt(DeclStmt &declStmt) {
 }
 
 llvm::Value *LLVMCodeGen::visitCallExpr(CallExpr &callExpr) {
-  llvm::Function *fun = module->getFunction(callExpr.callee->name);
+  llvm::Function *fun = module.getFunction(callExpr.callee->name);
 
 
   llvm::SmallVector<llvm::Value*, 4> args;
@@ -265,4 +265,22 @@ llvm::Value *LLVMCodeGen::visitUnaryExpr(UnaryExpr &unaryExpr) {
     return builder.CreateXor(value, llvm::ConstantInt::getTrue(llvm::IntegerType::getInt1Ty(context)));
   }
   llvm_unreachable("Unhandled unary op");
+}
+llvm::Value *LLVMCodeGen::visitConstStringExpr(ConstStringExpr &constStringExpr) {
+
+  // TODO extra zero?
+  llvm::Type *type = llvm::ArrayType::get(llvm::Type::getInt8Ty(context),
+                                          constStringExpr.string.length());
+  llvm::Constant *initializer = llvm::ConstantDataArray::getString(context, constStringExpr.string, true);
+  llvm::SmallVector<llvm::Value*, 2> const_ptr_5_indices;
+  llvm::ConstantInt* const_int64_6 = llvm::ConstantInt::get(context, llvm::APInt(64, llvm::StringRef("0"), 10));
+  const_ptr_5_indices.push_back(const_int64_6);
+  const_ptr_5_indices.push_back(const_int64_6);
+
+
+  auto *global = new llvm::GlobalVariable(module,
+                   type, true, llvm::GlobalValue::PrivateLinkage, initializer);
+
+  auto* const_ptr_5 = builder.CreateGEP(global, const_ptr_5_indices);
+  return const_ptr_5;
 }

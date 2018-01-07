@@ -104,8 +104,8 @@ public:
         return llvm::Type::getInt1Ty(c);
       case POD::Int:
         return llvm::Type::getInt32Ty(c);
-    case POD::String:
-      return llvm::Type::getInt8PtrTy(c);
+      case POD::String:
+        return llvm::Type::getInt8PtrTy(c);
     }
     assert(false);
   }

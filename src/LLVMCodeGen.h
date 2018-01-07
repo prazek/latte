@@ -8,12 +8,11 @@
 
 class LLVMCodeGen : public ASTVisitor<llvm::Value*> {
 public:
-  LLVMCodeGen(const TypeChecker &typeChecker)
-  // TODO file
-      : typeChecker(typeChecker), builder(context), module(std::make_unique<llvm::Module>("file", context)){
+  LLVMCodeGen(const TypeChecker &typeChecker, llvm::Module &module)
+      : typeChecker(typeChecker), context(module.getContext()), builder(context), module(module) {
   }
+  llvm::Value *visitConstStringExpr(ConstStringExpr &constStringExpr) override;
   llvm::Value *visitCallExpr(CallExpr &callExpr) override;
-
   llvm::Value *visitFunctionDef(FunctionDef &functionDef) override;
   llvm::Value *visitClassDef(ClassDef &classDef) override;
   llvm::Value *visitAssignStmt(AssignStmt &assignStmt) override;
@@ -39,10 +38,10 @@ private:
   llvm::Function *currentFunction = nullptr;
   std::unordered_map<VarDecl*, llvm::Value*> varAddr;
   const TypeChecker &typeChecker;
-public:
-  llvm::LLVMContext context;
+
+  llvm::LLVMContext &context;
   llvm::IRBuilder<> builder;
-  std::unique_ptr<llvm::Module> module;
+  llvm::Module &module;
 };
 
 

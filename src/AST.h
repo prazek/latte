@@ -275,6 +275,16 @@ struct CallExpr : Expr {
   }
 };
 
+struct ConstStringExpr : Expr {
+  ConstStringExpr(Type *type, std::string string)
+      : Expr(type), string(std::move(string)) {}
+
+  std::string string;
+
+  std::string dump() const override {
+    return "ConstStringExpr:";
+  }
+};
 
 struct ParenExpr : Expr {
   ParenExpr(Expr *expr) : Expr(expr->type) {}
