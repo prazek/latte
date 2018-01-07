@@ -25,6 +25,7 @@ public:
   void visitBooleanExpr(BooleanExpr &booleanExpr) override;
   void visitCallExpr(CallExpr &callExpr) override;
   void visitConstStringExpr(ConstStringExpr &constStringExpr) override;
+  void visitAST(AST &ast) override;
 
 private:
   llvm::Module &module;

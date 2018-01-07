@@ -2,35 +2,20 @@
 #include "TypeChecker.h"
 #include "Type.h"
 #include "Utilities.h"
+#include "BuiltinFunctions.h"
 #include <memory>
 
-static Type* getBool() {
-  return new SimpleType{SimpleType::POD::Bool};
-}
-
-static Type* getVoid() {
-  return new SimpleType{SimpleType::POD::Void};
-}
-
-static Type* getInt() {
-  return new SimpleType{SimpleType::POD::Int};
-}
-
-static Type* getStr() {
-  return new SimpleType{SimpleType::POD::String};
-}
-
 antlrcpp::Any TypeChecker::visitBool(LatteParser::BoolContext *) {
-  return getBool();
+  return (Type*)SimpleType::Bool();
 }
 antlrcpp::Any TypeChecker::visitVoid(LatteParser::VoidContext *) {
-  return getVoid();
+  return (Type*)SimpleType::Void();
 }
 antlrcpp::Any TypeChecker::visitInt(LatteParser::IntContext *) {
-  return getInt();
+  return (Type*)SimpleType::Int();
 }
 antlrcpp::Any TypeChecker::visitStr(LatteParser::StrContext *) {
-  return getStr();
+  return (Type*)SimpleType::String();
 }
 
 
@@ -70,7 +55,7 @@ antlrcpp::Any TypeChecker::visitEMulOp(LatteParser::EMulOpContext *ctx) {
     llvm_unreachable("Unknown op");
   };
 
-  auto *mulExpr = new BinExpr(getInt(), getMulOp(ctx->children.at(1)->getText()),
+  auto *mulExpr = new BinExpr(SimpleType::Bool(), getMulOp(ctx->children.at(1)->getText()),
                               lhsExpr, rhsExpr);
 
   if (lhsExpr->type == nullptr || rhsExpr->type == nullptr)
@@ -105,7 +90,7 @@ antlrcpp::Any TypeChecker::visitEAddOp(LatteParser::EAddOpContext *ctx) {
     llvm_unreachable("Unknown op");
   };
 
-  auto addExpr = new BinExpr(getInt(), getAddOp(ctx->children.at(1)->getText()),
+  auto addExpr = new BinExpr(SimpleType::Int(), getAddOp(ctx->children.at(1)->getText()),
                              lhsExpr, rhsExpr);
 
   if (lhsExpr->type == nullptr || lhsExpr->type == nullptr)
@@ -146,7 +131,7 @@ antlrcpp::Any TypeChecker::visitERelOp(LatteParser::ERelOpContext *ctx) {
     llvm_unreachable("Unknown op");
   };
 
-  auto *binExpr = new BinExpr(getBool(), getRelOp(ctx->children.at(1)->getText()),
+  auto *binExpr = new BinExpr(SimpleType::Bool(), getRelOp(ctx->children.at(1)->getText()),
                               lhsExpr, rhsExpr);
 
   if (lhsExpr->type == nullptr || lhsExpr->type == nullptr)
@@ -198,6 +183,10 @@ antlrcpp::Any TypeChecker::visitProgram(LatteParser::ProgramContext *ctx) {
   // Open global scope.
   variableScope.openNewScope();
   initialPass = true;
+
+  for (FunctionDef * def : BuiltinFunctions::getBuiltinFunctions())
+    variableScope.addVariableType(def->name, def);
+
   LatteBaseVisitor::visitProgram(ctx);
 
   initialPass = false;
@@ -270,20 +259,20 @@ antlrcpp::Any TypeChecker::visitArg(LatteParser::ArgContext *ctx) {
 }
 
 antlrcpp::Any TypeChecker::visitEInt(LatteParser::EIntContext *ctx) {
-  return (Expr*)new ConstIntExpr(getInt(), std::stoi(ctx->getText()));
+  return (Expr*)new ConstIntExpr(SimpleType::Int(), std::stoi(ctx->getText()));
 }
 
 antlrcpp::Any TypeChecker::visitEFalse(LatteParser::EFalseContext *) {
-  return (Expr*) new BooleanExpr(getBool(), false);
+  return (Expr*) new BooleanExpr(SimpleType::Bool(), false);
 }
 
 antlrcpp::Any TypeChecker::visitETrue(LatteParser::ETrueContext *) {
-  return (Expr*) new BooleanExpr(getBool(), true);
+  return (Expr*) new BooleanExpr(SimpleType::Bool(), true);
 }
 
 antlrcpp::Any TypeChecker::visitEStr(LatteParser::EStrContext *ctx) {
   std::string str = ctx->getText().substr(1, ctx->getText().size() - 2);
-  return (Expr*) new ConstStringExpr(getStr(), std::move(str));
+  return (Expr*) new ConstStringExpr(SimpleType::String(), std::move(str));
 }
 
 antlrcpp::Any TypeChecker::visitDecl(LatteParser::DeclContext *ctx) {
@@ -360,7 +349,7 @@ Type *TypeChecker::handleIncrOrDecr(LatteParser::StmtContext *ctx, const std::st
     context.diagnostic.issueError("Can't perform operation " + op + " on variable '"
                                     + varDecl->name + "' having type '"
                                     + varDecl->type->toString() + "'", ctx);
-    return getInt();
+    return SimpleType::Int();
   }
 
   return varDecl->type;
@@ -402,7 +391,7 @@ Expr *TypeChecker::handleBinaryBooleans(LatteParser::ExprContext *ctx,
   auto *rhs = ctx->children.at(2);
   Expr* rhsExpr = visit(rhs);
 
-  auto * binExpr = new BinExpr(getBool(), binOp, lhsExpr, rhsExpr);
+  auto * binExpr = new BinExpr(SimpleType::Bool(), binOp, lhsExpr, rhsExpr);
   if (lhsExpr->type == nullptr || rhsExpr->type == nullptr)
     return binExpr;
 
@@ -429,14 +418,14 @@ antlrcpp::Any TypeChecker::visitEUnOp(LatteParser::EUnOpContext *ctx) {
                                       + expr->type->toString() + "'", ctx);
 
     }
-    return (Expr*)new UnaryExpr(getInt(), UnaryExpr::UnOp::Minus, expr);
+    return (Expr*)new UnaryExpr(SimpleType::Int(), UnaryExpr::UnOp::Minus, expr);
   } else if (op == "!") {
     if (!isBoolean(*expr->type)) {
       context.diagnostic.issueError("Can't perform unary operator '!' on type '"
                                       + expr->type->toString() + "'", ctx);
 
     }
-    return (Expr*)new UnaryExpr(getInt(), UnaryExpr::UnOp::Minus, expr);
+    return (Expr*)new UnaryExpr(SimpleType::Int(), UnaryExpr::UnOp::Minus, expr);
   }
   assert(false && "Unknown operator");
   return {};
@@ -619,4 +608,5 @@ antlrcpp::Any TypeChecker::visitSExp(LatteParser::SExpContext *ctx) {
   Expr *expr = visit(ctx->children.front());
   return (Stmt*)new ExprStmt(expr);
 }
+
 

@@ -7,6 +7,7 @@
 #include <string>
 #include <fstream>
 #include <llvm/Support/raw_ostream.h>
+#include <llvm/IR/Verifier.h>
 
 using namespace antlr4;
 
@@ -65,6 +66,6 @@ int main(int argc, const char* argv[]) {
   codeGen.visitAST(typeChecker.ast);
 
   module->print(llvm::errs(), nullptr);
-
+  llvm::verifyModule(*module);
 
 }

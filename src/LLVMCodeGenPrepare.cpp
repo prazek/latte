@@ -1,24 +1,32 @@
 
 
 #include "LLVMCodeGenPrepare.h"
+#include "BuiltinFunctions.h"
+void LLVMCodeGenPrepare::visitAST(AST &ast) {
+  for (FunctionDef * functionDef : BuiltinFunctions::getBuiltinFunctions()) {
+    auto *funType = llvm::cast<llvm::FunctionType>(functionDef->getFunType()->toLLVMType(module.getContext()));
+    llvm::Function::Create(funType,
+                               llvm::Function::ExternalLinkage, functionDef->name,
+                               &module);
+  }
+  ASTVisitor::visitAST(ast);
+}
+
+
 void LLVMCodeGenPrepare::visitFunctionDef(FunctionDef &functionDef) {
   auto *funType = llvm::cast<llvm::FunctionType>(functionDef.getFunType()->toLLVMType(module.getContext()));
-
   llvm::Function *function  =
       llvm::Function::Create(funType,
-                             llvm::Function::ExternalLinkage, functionDef.name,
+                             llvm::Function::InternalLinkage, functionDef.name,
                              &module);
 
   assert(functionDef.arguments.size() == function->arg_size());
-
-  llvm::BasicBlock *bb = llvm::BasicBlock::Create(module.getContext(), "entry", function);
-  builder.SetInsertPoint(bb);
-
   int i = 0;
   for (auto &arg : function->args()) {
     auto *varDecl = functionDef.arguments.at(i++);
     arg.setName(varDecl->name);
   }
+
 }
 void LLVMCodeGenPrepare::visitClassDef(ClassDef &) {}
 void LLVMCodeGenPrepare::visitDeclStmt(DeclStmt &) {}

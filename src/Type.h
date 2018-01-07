@@ -41,20 +41,20 @@ public:
   SimpleType(SimpleType&&) = default;
 
 
-  static SimpleType Int() {
-    return SimpleType(POD::Int);
+  static SimpleType* Int() {
+    return new SimpleType(POD::Int);
   }
 
-  static SimpleType Void() {
-    return SimpleType(POD::Void);
+  static SimpleType* Void() {
+    return new SimpleType(POD::Void);
   }
 
-  static SimpleType Bool() {
-    return SimpleType(POD::Bool);
+  static SimpleType* Bool() {
+    return new SimpleType(POD::Bool);
   }
 
-  static SimpleType String() {
-    return SimpleType(POD::String);
+  static SimpleType* String() {
+    return new SimpleType(POD::String);
   }
 
   bool operator==(const Type& other) const override {

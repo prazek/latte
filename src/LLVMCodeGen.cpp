@@ -14,14 +14,9 @@
 
 
 llvm::Value *LLVMCodeGen::visitFunctionDef(FunctionDef &functionDef) {
-  auto *funType = llvm::cast<llvm::FunctionType>(functionDef.getFunType()->toLLVMType(context));
 
-  llvm::Function *function  =
-      llvm::Function::Create(funType,
-                             llvm::Function::ExternalLinkage, functionDef.name,
-                             &module);
+  llvm::Function *function = module.getFunction(functionDef.name);
   currentFunction = function;
-  assert(functionDef.arguments.size() == function->arg_size());
 
   llvm::BasicBlock *bb = llvm::BasicBlock::Create(context, "entry", function);
   builder.SetInsertPoint(bb);
@@ -29,7 +24,6 @@ llvm::Value *LLVMCodeGen::visitFunctionDef(FunctionDef &functionDef) {
   int i = 0;
   for (auto &arg : function->args()) {
     auto *varDecl = functionDef.arguments.at(i++);
-    arg.setName(varDecl->name);
 
     auto *alloca = builder.CreateAlloca(varDecl->type->toLLVMType(context));
     // LOL

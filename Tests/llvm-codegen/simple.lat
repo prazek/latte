@@ -23,10 +23,13 @@ int foo() {
 
     int g = foo();
     gag(g, g);
+    str();
+
     return a;
 }
 
 
-void str() {
+string str() {
     string s = "abc";
+    return s;
 }
