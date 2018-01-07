@@ -124,7 +124,7 @@ antlrcpp::Any TypeChecker::visitERelOp(LatteParser::ERelOpContext *ctx) {
     return (Expr*)binExpr;
 
   // FIXME: We could also handle strings here.
-  if (*lhsExpr->type  == *rhsExpr->type) {
+  if (*lhsExpr->type  != *rhsExpr->type) {
     std::string op = ctx->children.at(1)->getText();
     context.diagnostic.issueError("Cannot perform operation '" + op
                                     + "' on type '" + lhsExpr->type->toString() + "' and '"
@@ -331,7 +331,7 @@ Stmt *TypeChecker::handleIncrOrDecr(LatteParser::StmtContext *ctx, const std::st
   assert(ctx->children.size() == 3);
   VarDecl * varDecl = cast<VarDecl>(visitID(ctx->children.at(0)->getText(), ctx));
 
-  auto *incr = new IncrStmt(varDecl);
+  Stmt *incr = (op == "++") ? (Stmt*)new IncrStmt(varDecl) : (Stmt*)new DecrStmt(varDecl);
   if (varDecl->type == nullptr)
     return incr;
 
@@ -411,7 +411,7 @@ antlrcpp::Any TypeChecker::visitEUnOp(LatteParser::EUnOpContext *ctx) {
                                       + expr->type->toString() + "'", ctx);
 
     }
-    return (Expr*)new UnaryExpr(SimpleType::Int(), UnaryExpr::UnOp::Minus, expr);
+    return (Expr*)new UnaryExpr(SimpleType::Bool(), UnaryExpr::UnOp::Neg, expr);
   }
   assert(false && "Unknown operator");
   return {};

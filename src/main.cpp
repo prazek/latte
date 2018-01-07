@@ -32,7 +32,7 @@ std::string parseFileName(const std::string& fullName) {
 
 int main(int argc, const char* argv[]) {
   if (argc != 2) {
-    printf("instant language compiler\n");
+    printf("latte language compiler\n");
     printf("Usage: %s file.lat\n", argv[0]);
     exit(1);
   }
@@ -66,7 +66,7 @@ int main(int argc, const char* argv[]) {
   codeGen.visitAST(typeChecker.ast);
   llvm::verifyModule(*module);
 
-  module->print(llvm::errs(), nullptr);
+  //module->print(llvm::errs(), nullptr);
   std::fstream outFile(llvmFileName, std::ios_base::out);
 
   llvm::raw_os_ostream ostream(outFile);
@@ -76,6 +76,10 @@ int main(int argc, const char* argv[]) {
 
   std::string command = "llvm-as " + llvmFileName + " -o " + bcFileName;
   std::system(command.c_str());
+
+
+  std::string linkCommand = "llvm-link -o " + bcFileName + " " + bcFileName + " lib/runtime.ll ";
+  std::system(linkCommand.c_str());
 
   // TODO print OK
 

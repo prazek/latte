@@ -81,7 +81,6 @@ llvm::Value *LLVMCodeGen::visitAssignStmt(AssignStmt &assignStmt) {
 
 llvm::Value *LLVMCodeGen::visitVarExpr(VarExpr &varExpr) {
   auto *value = varAddr.at(varExpr.decl);
-  value->dump();
   return builder.CreateLoad(value);
 }
 
@@ -100,19 +99,24 @@ llvm::Value* LLVMCodeGen::handleAnd(BinExpr &andExpr) {
   auto *lhsVal = visitExpr(*andExpr.lhs);
   llvm::BasicBlock* bb = builder.GetInsertBlock();
   auto *trueBlock = llvm::BasicBlock::Create(module.getContext(), "cond.rhs", currentFunction);
-  auto *afterBlock = llvm::BasicBlock::Create(module.getContext(), "", currentFunction);
 
-  builder.CreateCondBr(lhsVal, trueBlock, afterBlock);
 
   builder.SetInsertPoint(trueBlock);
   auto *rhsVal = visitExpr(*andExpr.rhs);
+  auto *blockFalse = builder.GetInsertBlock();
+  auto *afterBlock = llvm::BasicBlock::Create(module.getContext(), "", currentFunction);
+
   builder.CreateBr(afterBlock);
+
+  builder.SetInsertPoint(bb);
+  builder.CreateCondBr(lhsVal, trueBlock, afterBlock);
+
 
   builder.SetInsertPoint(afterBlock);
   llvm::PHINode *phiInstr = builder.CreatePHI(llvm::IntegerType::getInt1Ty(module.getContext()), 2);
   phiInstr->addIncoming(llvm::ConstantInt::getFalse(llvm::IntegerType::getInt1Ty(module.getContext())), bb);
 
-  phiInstr->addIncoming(rhsVal, trueBlock);
+  phiInstr->addIncoming(rhsVal, blockFalse);
   return phiInstr;
 }
 
@@ -121,18 +125,18 @@ llvm::Value* LLVMCodeGen::handleOr(BinExpr &orExpr) {
   llvm::BasicBlock* bb = builder.GetInsertBlock();
   auto *falseBlock = llvm::BasicBlock::Create(module.getContext(), "cond.rhs", currentFunction);
   auto *afterBlock = llvm::BasicBlock::Create(module.getContext(), "", currentFunction);
-
   builder.CreateCondBr(lhsVal, afterBlock, falseBlock);
 
   builder.SetInsertPoint(falseBlock);
   auto *rhsVal = visitExpr(*orExpr.rhs);
+  auto *trueBlock = builder.GetInsertBlock();
   builder.CreateBr(afterBlock);
 
   builder.SetInsertPoint(afterBlock);
   llvm::PHINode *phiInstr = builder.CreatePHI(llvm::IntegerType::getInt1Ty(module.getContext()), 2);
   phiInstr->addIncoming(llvm::ConstantInt::getTrue(llvm::IntegerType::getInt1Ty(module.getContext())), bb);
 
-  phiInstr->addIncoming(rhsVal, falseBlock);
+  phiInstr->addIncoming(rhsVal, trueBlock);
   return phiInstr;
 }
 
@@ -197,19 +201,22 @@ llvm::Value *LLVMCodeGen::visitReturnStmt(ReturnStmt &returnStmt) {
   return builder.CreateRetVoid();
 }
 
-llvm::Value *LLVMCodeGen::visitUnreachableStmt(UnreachableStmt &unreachableStmt) {
+llvm::Value *LLVMCodeGen::visitUnreachableStmt(UnreachableStmt &) {
   return builder.CreateUnreachable();
 }
 
 
 llvm::Value *LLVMCodeGen::visitIfStmt(IfStmt &condStmt) {
 
+
+  llvm::Value *cmp = visitExpr(*condStmt.condition);
   llvm::BasicBlock *labTrue = llvm::BasicBlock::Create(module.getContext(), "if", currentFunction);
   std::string nextBlockName = condStmt.elseStmt == nullptr ? "" : "else";
   llvm::BasicBlock *labFalse = llvm::BasicBlock::Create(module.getContext(), nextBlockName, currentFunction);
-
-  llvm::Value *cmp = visitExpr(*condStmt.condition);
   builder.CreateCondBr(cmp, labTrue, labFalse);
+
+
+  llvm::BasicBlock *lastBlock = labTrue;
   builder.SetInsertPoint(labTrue);
   visitStmt(*condStmt.stmt);
   llvm::BasicBlock *labAfter = labFalse;
@@ -218,11 +225,15 @@ llvm::Value *LLVMCodeGen::visitIfStmt(IfStmt &condStmt) {
     labAfter =
         llvm::BasicBlock::Create(module.getContext(), "", currentFunction);
 
-    builder.CreateBr(labAfter);
+    if (lastBlock->empty() || !llvm::isa<llvm::TerminatorInst>(lastBlock->back()))
+      builder.CreateBr(labAfter);
     builder.SetInsertPoint(labFalse);
     visitStmt(*condStmt.elseStmt);
+    lastBlock = labFalse;
   }
-  builder.CreateBr(labAfter);
+
+  if (lastBlock->empty() || !llvm::isa<llvm::TerminatorInst>(lastBlock->back()))
+    builder.CreateBr(labAfter);
   builder.SetInsertPoint(labAfter);
   return nullptr;
 }
@@ -275,7 +286,7 @@ llvm::Value *LLVMCodeGen::visitDecrStmt(DecrStmt &incrStmt) {
   auto *val = builder.CreateLoad(addr);
   auto *newVal = builder.CreateSub(
       val, llvm::ConstantInt::get(llvm::IntegerType::getInt32Ty(module.getContext()), 1));
-  return builder.CreateStore(addr, newVal);
+  return builder.CreateStore(newVal, addr);
 
 }
 

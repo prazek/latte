@@ -40,3 +40,25 @@ entry:	%res = alloca double
 	ret double %t2
 }
 
+define i8* @___stringConcat(i8* nocapture readonly, i8* nocapture readonly) {
+  %3 = tail call i64 @strlen(i8* %0) #3
+  %4 = tail call i64 @strlen(i8* %1) #3
+  %5 = add i64 %3, 1
+  %6 = add i64 %5, %4
+  %7 = tail call noalias i8* @malloc(i64 %6) #4
+  %8 = tail call i8* @strcpy(i8* %7, i8* %0) #4
+  %9 = tail call i8* @strcat(i8* %7, i8* %1) #4
+  ret i8* %7
+}
+
+; Function Attrs: nounwind
+declare noalias i8* @malloc(i64)
+
+; Function Attrs: argmemonly nounwind readonly
+declare i64 @strlen(i8* nocapture)
+
+; Function Attrs: nounwind
+declare i8* @strcpy(i8*, i8* nocapture readonly)
+
+; Function Attrs: nounwind
+declare i8* @strcat(i8*, i8* nocapture readonly)

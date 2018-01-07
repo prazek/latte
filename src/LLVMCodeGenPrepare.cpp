@@ -17,7 +17,7 @@ void LLVMCodeGenPrepare::visitFunctionDef(FunctionDef &functionDef) {
   auto *funType = llvm::cast<llvm::FunctionType>(functionDef.getFunType()->toLLVMType(module.getContext()));
   llvm::Function *function  =
       llvm::Function::Create(funType,
-                             llvm::Function::InternalLinkage, functionDef.name,
+                             llvm::Function::ExternalLinkage, functionDef.name,
                              &module);
 
   assert(functionDef.arguments.size() == function->arg_size());
@@ -39,6 +39,8 @@ void LLVMCodeGenPrepare::visitFunctionDef(FunctionDef &functionDef) {
     functionDef.block.stmts.push_back(new ReturnStmt(nullptr));
   else // Add unreachable
     functionDef.block.stmts.push_back(new UnreachableStmt);
+
+  //visitBlock(functionDef.block);
 }
 
 void LLVMCodeGenPrepare::visitClassDef(ClassDef &) {}

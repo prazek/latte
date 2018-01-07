@@ -23,15 +23,13 @@ include_directories(${LLVM_INCLUDE_DIRS})
 add_definitions(${LLVM_DEFINITIONS})
 
 llvm_map_components_to_libnames(llvm_libs support core irreader)
-message("trying: ${llvm_libs}")
 
 
-add_executable(latte main.cpp)
-target_link_libraries(latte latte_lib)
-target_link_libraries(latte antlr4lib)
+add_executable(latc_llvm main.cpp)
+target_link_libraries(latc_llvm latte_lib)
+target_link_libraries(latc_llvm antlr4lib)
 
-message("DUPA:   dupa:  ${LLVM_LIBRARIES} ${LLVM_LDFLAGS}")
-target_link_libraries(latte ${llvm_libs})
+target_link_libraries(latc_llvm ${llvm_libs})
 
 
 
