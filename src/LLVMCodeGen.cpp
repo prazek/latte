@@ -11,7 +11,7 @@
 #include "llvm/IR/Module.h"
 
 #include "llvm/IR/Verifier.h"
-
+#include "BuiltinFunctions.h"
 
 llvm::Value *LLVMCodeGen::visitFunctionDef(FunctionDef &functionDef) {
 
@@ -26,9 +26,8 @@ llvm::Value *LLVMCodeGen::visitFunctionDef(FunctionDef &functionDef) {
     auto *varDecl = functionDef.arguments.at(i++);
 
     auto *alloca = builder.CreateAlloca(varDecl->type->toLLVMType(module.getContext()));
-    // LOL
-    auto *stored = builder.CreateStore(arg.stripPointerCasts(), alloca);
-    varAddr[varDecl] = stored;
+    builder.CreateStore(arg.stripPointerCasts(), alloca);
+    varAddr[varDecl] = alloca;
   }
 
 
@@ -80,16 +79,18 @@ llvm::Value *LLVMCodeGen::visitAssignStmt(AssignStmt &assignStmt) {
   return builder.CreateStore(rhs, var);
 }
 
-
 llvm::Value *LLVMCodeGen::visitVarExpr(VarExpr &varExpr) {
   auto *value = varAddr.at(varExpr.decl);
+  value->dump();
   return builder.CreateLoad(value);
 }
+
 llvm::Value *LLVMCodeGen::visitConstIntExpr(ConstIntExpr &constIntExpr) {
 
   return (llvm::Value*)llvm::ConstantInt::get(llvm::IntegerType::getInt32Ty(module.getContext()),
                                               constIntExpr.value);
 }
+
 llvm::Value *LLVMCodeGen::visitBooleanExpr(BooleanExpr &booleanExpr) {
   return llvm::ConstantInt::get(llvm::IntegerType::getInt1Ty(module.getContext()),
                                 booleanExpr.value);
@@ -135,6 +136,17 @@ llvm::Value* LLVMCodeGen::handleOr(BinExpr &orExpr) {
   return phiInstr;
 }
 
+llvm::Value *LLVMCodeGen::handleAdd(BinExpr &binExpr, llvm::Value *lhs, llvm::Value *rhs) {
+  if (SimpleType::isIntegral(*binExpr.type))
+    return builder.CreateAdd(lhs, rhs);
+
+  llvm::Function *fun = module.getFunction(BuiltinFunctions::StringConcat);
+  llvm::SmallVector<llvm::Value*, 2> args;
+  args.push_back(lhs);
+  args.push_back(rhs);
+
+  return builder.CreateCall(fun, args);
+}
 
 llvm::Value *LLVMCodeGen::visitBinExpr(BinExpr &binExpr) {
   switch(binExpr.binOp) {
@@ -168,7 +180,7 @@ llvm::Value *LLVMCodeGen::visitBinExpr(BinExpr &binExpr) {
   case BinExpr::BinOp::Mod:
     return builder.CreateSRem(lhs, rhs);
   case BinExpr::BinOp::Add:
-    return builder.CreateAdd(lhs, rhs);
+    return handleAdd(binExpr, lhs, rhs);
   case BinExpr::BinOp::Minus:
     return builder.CreateSub(lhs, rhs);
   case BinExpr::BinOp::And:
@@ -179,12 +191,17 @@ llvm::Value *LLVMCodeGen::visitBinExpr(BinExpr &binExpr) {
   llvm_unreachable("Unhandled bin op");
 }
 
-
 llvm::Value *LLVMCodeGen::visitReturnStmt(ReturnStmt &returnStmt) {
   if (returnStmt.expr)
     return builder.CreateRet(visitExpr(*returnStmt.expr));
   return builder.CreateRetVoid();
 }
+
+llvm::Value *LLVMCodeGen::visitUnreachableStmt(UnreachableStmt &unreachableStmt) {
+  return builder.CreateUnreachable();
+}
+
+
 llvm::Value *LLVMCodeGen::visitIfStmt(IfStmt &condStmt) {
 
   llvm::BasicBlock *labTrue = llvm::BasicBlock::Create(module.getContext(), "if", currentFunction);
@@ -238,12 +255,9 @@ llvm::Value *LLVMCodeGen::visitDeclStmt(DeclStmt &declStmt) {
 
 llvm::Value *LLVMCodeGen::visitCallExpr(CallExpr &callExpr) {
   llvm::Function *fun = module.getFunction(callExpr.callee->name);
-
-
   llvm::SmallVector<llvm::Value*, 4> args;
   for (Expr* arg : callExpr.arguments)
     args.push_back(visitExpr(*arg));
-
 
   return builder.CreateCall(fun, args);
 }

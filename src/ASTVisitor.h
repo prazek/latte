@@ -47,6 +47,8 @@ public:
       return visitDecrStmt(*decrStmt);
     if (auto *retStmt = dyn_cast<ReturnStmt>(stmt))
       return visitReturnStmt(*retStmt);
+    if (auto *unrachableStmt = dyn_cast<UnreachableStmt>(stmt))
+      return visitUnreachableStmt(*unrachableStmt);
     if (auto *ifStmt = dyn_cast<IfStmt>(stmt))
       return visitIfStmt(*ifStmt);
     if (auto *whileStmt = dyn_cast<WhileStmt>(stmt))
@@ -69,6 +71,7 @@ public:
   virtual T visitIncrStmt(IncrStmt &incrStmt) = 0;
   virtual T visitDecrStmt(DecrStmt &incrStmt) = 0;
   virtual T visitReturnStmt(ReturnStmt &returnStmt) = 0;
+  virtual T visitUnreachableStmt(UnreachableStmt &unreachableStmt) = 0;
   virtual T visitIfStmt(IfStmt &condStmt) = 0;
   virtual T visitWhileStmt(WhileStmt &whileStmt) = 0;
   virtual T visitExprStmt(ExprStmt &exprStmt) {

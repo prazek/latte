@@ -27,13 +27,14 @@ public:
   llvm::Value *visitIncrStmt(IncrStmt &incrStmt) override;
   llvm::Value *visitDecrStmt(DecrStmt &incrStmt) override;
   llvm::Value *visitUnaryExpr(UnaryExpr &unaryExpr) override;
+  llvm::Value *visitUnreachableStmt(UnreachableStmt &unreachableStmt) override;
 
 private:
   llvm::Value *visitVarDecl(VarDecl &declItem);
   llvm::Value* handleAnd(BinExpr &andExpr);
   llvm::Value* handleOr(BinExpr &andExpr);
   llvm::Value *defaultInitializer(Type *type);
-
+  llvm::Value *handleAdd(BinExpr &binExpr, llvm::Value *lhs, llvm::Value *rhs);
 private:
   llvm::Function *currentFunction = nullptr;
   std::unordered_map<VarDecl*, llvm::Value*> varAddr;

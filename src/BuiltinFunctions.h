@@ -15,10 +15,13 @@ public:
          getPrintFunction("printInt", SimpleType::Int()),
          getReadFunction("readString", SimpleType::String()),
          getReadFunction("readInt", SimpleType::Int()),
-         getErrorFunction()
+         getErrorFunction(),
+         getStrCatFunction()
          };
     return builtinFunctions;
   }
+
+  static const inline std::string StringConcat = "___stringConcat";
 
 private:
   static FunctionDef *getPrintFunction(std::string name, Type *argType) {
@@ -38,7 +41,14 @@ private:
     auto *funType = new FunctionType;
     funType->returnType = SimpleType::Void();
     return new FunctionDef(funType, "error");
+  }
 
+  static FunctionDef *getStrCatFunction() {
+    auto *funType = new FunctionType;
+    funType->returnType = SimpleType::String();
+    funType->argumentTypes.push_back(SimpleType::String());
+    funType->argumentTypes.push_back(SimpleType::String());
+    return new FunctionDef(funType, StringConcat);
   }
 };
 

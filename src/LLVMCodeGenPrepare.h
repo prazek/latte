@@ -26,6 +26,7 @@ public:
   void visitCallExpr(CallExpr &callExpr) override;
   void visitConstStringExpr(ConstStringExpr &constStringExpr) override;
   void visitAST(AST &ast) override;
+  void visitUnreachableStmt(UnreachableStmt &unreachableStmt) override;
 
 private:
   llvm::Module &module;

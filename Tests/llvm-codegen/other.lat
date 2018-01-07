@@ -1,0 +1,4 @@
+void fac(int a) {
+	int n = a;
+	return;
+}

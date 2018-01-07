@@ -96,6 +96,30 @@ public:
     assert(false && "Unreachable");
   }
 
+  static bool isIntegral(const Type& type) {
+    if (auto *st = dyn_cast<SimpleType>(type))
+      return st->isInt();
+    return false;
+  }
+
+  static bool isString(const Type& type) {
+    if (auto *st = dyn_cast<SimpleType>(type))
+      return st->isString();
+    return false;
+  }
+
+  static bool isBoolean(const Type& type) {
+    if (auto *st = dyn_cast<SimpleType>(type))
+      return st->isBool();
+    return false;
+  }
+
+  static bool isVoid(const Type& type) {
+    if (auto *st = dyn_cast<SimpleType>(type))
+      return st->isVoid();
+    return false;
+  }
+
   llvm::Type *toLLVMType(llvm::LLVMContext &c) const override {
     switch (pod) {
       case POD::Void:

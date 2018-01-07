@@ -141,6 +141,15 @@ struct ReturnStmt : Stmt {
   }
 };
 
+// This stmt is inserted at the end of non-void function that does not have a
+// return, meaning that getting there is unreachable.
+struct UnreachableStmt : Stmt {
+
+  std::string dump() const override {
+    return "UnreachableStmt";
+  }
+};
+
 struct IfStmt : Stmt {
   IfStmt(Expr *condition, Stmt *stmt, Stmt *elseStmt)
       : condition(condition), stmt(stmt), elseStmt(elseStmt) {}
