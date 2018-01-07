@@ -4,10 +4,12 @@
 #include "TypeChecker.h"
 #include "LLVMCodeGen.h"
 #include "LLVMCodeGenPrepare.h"
+#include "llvm/Support/raw_ostream.h"
+#include "llvm/Support/raw_os_ostream.h"
+#include "llvm/IR/Verifier.h"
 #include <string>
 #include <fstream>
-#include <llvm/Support/raw_ostream.h>
-#include <llvm/IR/Verifier.h>
+
 
 using namespace antlr4;
 
@@ -57,15 +59,26 @@ int main(int argc, const char* argv[]) {
   typeChecker.visit(program);
 
   llvm::LLVMContext llvmContext;
-  std::unique_ptr<llvm::Module> module = std::make_unique<llvm::Module>("file", llvmContext);
+  std::unique_ptr<llvm::Module> module = std::make_unique<llvm::Module>(parsedFile, llvmContext);
 
   LLVMCodeGenPrepare codeGenPrepare(*module);
   codeGenPrepare.visitAST(typeChecker.ast);
 
   LLVMCodeGen codeGen(typeChecker, *module);
   codeGen.visitAST(typeChecker.ast);
+  llvm::verifyModule(*module);
 
   module->print(llvm::errs(), nullptr);
-  llvm::verifyModule(*module);
+  std::fstream outFile(llvmFileName, std::ios_base::out);
+
+  llvm::raw_os_ostream ostream(outFile);
+  module->print(ostream, nullptr);
+  ostream.flush();
+  outFile.flush();
+
+  std::string command = "llvm-as " + llvmFileName + " -o " + bcFileName;
+  std::system(command.c_str());
+
+  // TODO print OK
 
 }

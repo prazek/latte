@@ -27,7 +27,7 @@ llvm::Value *LLVMCodeGen::visitFunctionDef(FunctionDef &functionDef) {
 
     auto *alloca = builder.CreateAlloca(varDecl->type->toLLVMType(context));
     // LOL
-    auto *stored = builder.CreateStore(alloca, arg.stripPointerCasts());
+    auto *stored = builder.CreateStore(arg.stripPointerCasts(), alloca);
     varAddr[varDecl] = stored;
   }
 
@@ -253,7 +253,7 @@ llvm::Value *LLVMCodeGen::visitIncrStmt(IncrStmt &incrStmt) {
   auto *val = builder.CreateLoad(addr);
   auto *newVal = builder.CreateAdd(
       val, llvm::ConstantInt::get(llvm::IntegerType::getInt32Ty(context), 1));
-  return builder.CreateStore(addr, newVal);
+  return builder.CreateStore(newVal, addr);
 }
 
 llvm::Value *LLVMCodeGen::visitDecrStmt(DecrStmt &incrStmt) {
@@ -283,7 +283,7 @@ llvm::Value *LLVMCodeGen::visitConstStringExpr(ConstStringExpr &constStringExpr)
 
 llvm::Value *LLVMCodeGen::getString(const std::string &string) {
   llvm::Type *type = llvm::ArrayType::get(llvm::Type::getInt8Ty(context),
-                                          string.length());
+                                          string.length() + 1);
   llvm::Constant *initializer = llvm::ConstantDataArray::getString(context, string, true);
   llvm::SmallVector<llvm::Value*, 2> const_ptr_5_indices;
   llvm::ConstantInt* const_int64_6 = llvm::ConstantInt::get(context, llvm::APInt(64, llvm::StringRef("0"), 10));
