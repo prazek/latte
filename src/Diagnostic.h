@@ -11,7 +11,7 @@ public:
 
 
 
-
+  bool hadError = false;
 private:
   std::string fileName;
 };

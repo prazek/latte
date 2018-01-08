@@ -440,8 +440,15 @@ antlrcpp::Any TypeChecker::visitEFunCall(LatteParser::EFunCallContext *ctx) {
   Def *def = visitID(funName, ctx);
   if (auto *funDef =  dyn_cast<FunctionDef>(def)) {
     auto *callExpr = new CallExpr(cast<FunctionDef>(def));
-    if (ctx->children.size() <= 3)
+    if (ctx->children.size() <= 3) {
+      if (!funDef->arguments.empty())
+        context.diagnostic.issueError("Function '" + funName + "' requires "
+                                          + std::to_string(funDef->getFunType()->argumentTypes.size())
+                                          + " arguments; 0 was provided\n"
+                                      "Function signature: " + funDef->type->toString()
+            , ctx);
       return (Expr*)callExpr;
+    }
 
     auto argumentExprs = [this](auto *ctx) {
       std::vector<Expr*> argumentTypes;

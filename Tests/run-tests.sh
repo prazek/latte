@@ -15,3 +15,17 @@ do
 
 done
 
+FILES=Tests/bad/*.lat
+for i in $FILES
+do
+    echo "running $i"
+    ./latc_llvm $i
+    if [ $? -eq 0 ]; then
+        echo "Not issued error!!!"
+        echo "."
+        echo "."
+    fi
+
+    result="${i/.lat/.bc}"
+
+done

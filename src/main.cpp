@@ -30,6 +30,30 @@ std::string parseFileName(const std::string& fullName) {
 }
 
 
+class ErrorListener : public ConsoleErrorListener {
+public:
+  ErrorListener(std::string fileName) : fileName(std::move(fileName)) {}
+
+  void syntaxError(Recognizer *,
+                   Token *,
+                   size_t line,
+                   size_t charPositionInLine,
+                   const std::string &msg,
+                   std::exception_ptr) override {
+    if (!hadError) {
+      std::cerr << "ERROR\n";
+      hadError = true;
+    }
+
+    std::cerr << fileName << ":"
+              << line << ":"
+              << charPositionInLine << ": error: " << msg << std::endl;
+  }
+
+  bool hadError = false;
+  std::string fileName;
+};
+
 int main(int argc, const char* argv[]) {
   if (argc != 2) {
     printf("latte language compiler\n");
@@ -48,13 +72,23 @@ int main(int argc, const char* argv[]) {
   CommonTokenStream tokens(&lexer);
   tokens.fill();
 
+  ErrorListener errorListener(fileName);
   LatteParser parser(&tokens);
+  parser.removeErrorListeners();
+  parser.addErrorListener(&errorListener);
+
   auto *program = parser.program();
+  if (errorListener.hadError)
+    return 2;
 
   Context context(fileName);
 
   TypeChecker typeChecker(context);
   typeChecker.visit(program);
+
+  if (context.diagnostic.hadError)
+    return 3;
+
 
   llvm::LLVMContext llvmContext;
   std::unique_ptr<llvm::Module> module = std::make_unique<llvm::Module>(parsedFile, llvmContext);
@@ -81,6 +115,6 @@ int main(int argc, const char* argv[]) {
   std::string linkCommand = "llvm-link -o " + bcFileName + " " + bcFileName + " lib/runtime.ll ";
   std::system(linkCommand.c_str());
 
-  // TODO print OK
-
+  std::cerr << "OK\n";
+  return 0;
 }
