@@ -9,5 +9,12 @@ void Diagnostic::issueError(const std::string &msg, antlr4::ParserRuleContext *c
   std::cerr << fileName << ":"
     << ctx->getStart()->getLine() << ":"
     << ctx->getStart()->getCharPositionInLine() << ": error: " << msg << std::endl;
+}
 
+void Diagnostic::issueError(const std::string &msg) {
+  if (!hadError) {
+    std::cerr << "ERROR\n";
+    hadError = true;
+  }
+  std::cerr << fileName << ": error: " << msg << std::endl;
 }

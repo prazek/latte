@@ -9,6 +9,8 @@ public:
 
   void issueError(const std::string &msg, antlr4::ParserRuleContext *ctx);
 
+  void issueError(const std::string &msg);
+
 
 
   bool hadError = false;

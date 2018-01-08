@@ -7,6 +7,7 @@
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/raw_os_ostream.h"
 #include "llvm/IR/Verifier.h"
+#include "ControlFlowAnalyzer.h"
 #include <string>
 #include <fstream>
 
@@ -89,6 +90,11 @@ int main(int argc, const char* argv[]) {
   if (context.diagnostic.hadError)
     return 3;
 
+  ControlFlowAnalyzer controlFlowAnalyzer(context.diagnostic);
+  controlFlowAnalyzer.visitAST(typeChecker.ast);
+
+  if (context.diagnostic.hadError)
+    return 4;
 
   llvm::LLVMContext llvmContext;
   std::unique_ptr<llvm::Module> module = std::make_unique<llvm::Module>(parsedFile, llvmContext);
