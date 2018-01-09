@@ -5,18 +5,12 @@
 
 declare i32 @printf(i8*, ...) 
 declare i32 @scanf(i8*, ...)
-declare i32 @puts(i8*)
+declare i32 @puts(i8* nocapture readonly)
 
 define void @printInt(i32 %x) {
        %t0 = getelementptr [4 x i8], [4 x i8]* @dnl, i32 0, i32 0
        call i32 (i8*, ...) @printf(i8* %t0, i32 %x) 
        ret void
-}
-
-define void @printDouble(double %x) {
-entry: %t0 = getelementptr [6 x i8], [6 x i8]* @fnl, i32 0, i32 0
-	call i32 (i8*, ...) @printf(i8* %t0, double %x) 
-	ret void
 }
 
 define void @printString(i8* %s) {
@@ -32,68 +26,48 @@ entry:	%res = alloca i32
 	ret i32 %t2
 }
 
-;define double @readDouble() {
-;entry:	%res = alloca double
-;        %t1 = getelementptr [4 x i8],[4 x i8]* @lf, i32 0, i32 0;
-;	call i32 (i8*, ...) @scanf(i8* %t1, double* %res)
-;	%t2 = load double, double* %res
-;	ret double %t2
-;}
 
 %struct._IO_FILE = type { i32, i8*, i8*, i8*, i8*, i8*, i8*, i8*, i8*, i8*, i8*, i8*, %struct._IO_marker*, %struct._IO_FILE*, i32, i32, i64, i16, i8, [1 x i8], i8*, i64, i8*, i8*, i8*, i8*, i64, i32, [20 x i8] }
 %struct._IO_marker = type { %struct._IO_marker*, %struct._IO_FILE*, i32 }
 @stdin = external global %struct._IO_FILE*, align 8
 
+@.whitespace = private unnamed_addr constant [2 x i8] c" \00", align 1
+
+; calls getline
 define noalias i8* @readString() {
-  br label %1
-
-; <label>:1:                                      ; preds = %0, %17
-  %2 = phi i64 [ 0, %0 ], [ %21, %17 ]
-  %3 = phi i64 [ 0, %0 ], [ %19, %17 ]
-  %4 = phi i8* [ null, %0 ], [ %18, %17 ]
-  %5 = load %struct._IO_FILE*, %struct._IO_FILE** @stdin, align 8
-  %6 = tail call i32 @getc(%struct._IO_FILE* %5)
-  %7 = icmp eq i32 %6, -1
-  %8 = icmp eq i32 %6, 10
-  %9 = or i1 %7, %8
-  %10 = select i1 %9, i32 0, i32 %6
-  %11 = icmp ugt i64 %3, %2
-  br i1 %11, label %17, label %12
-
-; <label>:12:                                     ; preds = %1
-  %13 = add i64 %3, 10
-  %14 = tail call i8* @realloc(i8* %4, i64 %13)
-  %15 = icmp eq i8* %14, null
-  br i1 %15, label %16, label %17
-
-; <label>:16:                                     ; preds = %12
-  tail call void @free(i8* %4) #4
-  br label %24
-
-; <label>:17:                                     ; preds = %12, %1
-  %18 = phi i8* [ %4, %1 ], [ %14, %12 ]
-  %19 = phi i64 [ %3, %1 ], [ %13, %12 ]
-  %20 = trunc i32 %10 to i8
-  %21 = add i64 %2, 1
-  %22 = getelementptr inbounds i8, i8* %18, i64 %2
-  store i8 %20, i8* %22, align 1
-  %23 = icmp eq i32 %10, 0
-  br i1 %23, label %24, label %1
-
-; <label>:24:                                     ; preds = %17, %16
-  %25 = phi i8* [ null, %16 ], [ %18, %17 ]
-  ret i8* %25
+  %1 = alloca i8*, align 8
+  %2 = alloca i64, align 8
+  %3 = tail call i32 (i8*, ...) @scanf(i8* getelementptr inbounds ([2 x i8], [2 x i8]* @.whitespace, i64 0, i64 0))
+  %4 = bitcast i8** %1 to i8*
+  store i8* null, i8** %1, align 8
+  %5 = bitcast i64* %2 to i8*
+  store i64 0, i64* %2, align 8
+  %6 = load %struct._IO_FILE*, %struct._IO_FILE** @stdin, align 8
+  %7 = call i64 @getline(i8** nonnull %1, i64* nonnull %2, %struct._IO_FILE* %6)
+  %8 = load i8*, i8** %1, align 8
+  ret i8* %8
 }
 
 define i8* @___stringConcat(i8* nocapture readonly, i8* nocapture readonly) {
-  %3 = tail call i64 @strlen(i8* %0) #3
-  %4 = tail call i64 @strlen(i8* %1) #3
+  %3 = tail call i64 @strlen(i8* %0)
+  %4 = tail call i64 @strlen(i8* %1)
   %5 = add i64 %3, 1
   %6 = add i64 %5, %4
-  %7 = tail call noalias i8* @malloc(i64 %6) #4
-  %8 = tail call i8* @strcpy(i8* %7, i8* %0) #4
-  %9 = tail call i8* @strcat(i8* %7, i8* %1) #4
+  %7 = tail call noalias i8* @malloc(i64 %6)
+  %8 = tail call i8* @strcpy(i8* %7, i8* %0)
+  %9 = tail call i8* @strcat(i8* %7, i8* %1)
   ret i8* %7
+}
+
+declare i64 @getline(i8**, i64*, %struct._IO_FILE*)
+
+@.runtimeError = private unnamed_addr constant [15 x i8] c"Runtime error\0A\00", align 1
+
+; Function Attrs: noreturn nounwind uwtable
+define void @error() {
+  %1 = tail call i32 @puts(i8* getelementptr inbounds ([15 x i8], [15 x i8]* @.runtimeError, i64 0, i64 0))
+  tail call void @exit(i32 1)
+  unreachable
 }
 
 ; Function Attrs: nounwind
@@ -116,3 +90,20 @@ declare noalias i8* @realloc(i8* nocapture, i64)
 
 ; Function Attrs: nounwind
 declare void @free(i8* nocapture)
+
+declare void @exit(i32) noreturn
+
+
+;define double @readDouble() {
+;entry:	%res = alloca double
+;        %t1 = getelementptr [4 x i8],[4 x i8]* @lf, i32 0, i32 0;
+;	call i32 (i8*, ...) @scanf(i8* %t1, double* %res)
+;	%t2 = load double, double* %res
+;	ret double %t2
+;}
+;
+;define void @printDouble(double %x) {
+;entry: %t0 = getelementptr [6 x i8], [6 x i8]* @fnl, i32 0, i32 0
+;	call i32 (i8*, ...) @printf(i8* %t0, double %x)
+;	ret void
+;}

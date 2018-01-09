@@ -12,6 +12,17 @@ add_executable(runTests ${TEST_FILES})
 target_link_libraries(runTests gtest gtest_main)
 target_link_libraries(runTests latte_lib)
 target_link_libraries(runTests antlr4lib)
+
+find_package(LLVM 3.7 REQUIRED
+        all-targets analysis asmparser asmprinter bitreader bitwriter codegen core debuginfocodeview debuginfodwarf debuginfomsf debuginfopdb globalisel instcombine ipa ipo instrumentation irreader libdriver linker lto mc mcdisassembler mcparser objcarcopts object option profiledata scalaropts selectiondag support tablegen target transformutils vectorize ${EXTRA_LLVM_MODULES})
+include_directories(${LLVM_INCLUDE_DIRS})
+add_definitions(${LLVM_DEFINITIONS})
+
+llvm_map_components_to_libnames(llvm_libs support core irreader)
+
+
+
+message("Trying ${llvm_libs}")
 target_link_libraries(runTests ${llvm_libs})
 
 configure_lit_site_cfg(
