@@ -2,13 +2,15 @@
 
 cd ../
 FILES=Tests/correct/*.lat
+lli=~/MRJP/llvm39/bin/lli
+
 for i in $FILES
 do
     echo "running $i"
     ./latc_llvm $i
     result="${i/.lat/.bc}"
     echo $result
-    lli $result > out.tmp
+    $lli $result > out.tmp
     real="${i/.lat/.output}"
     echo $real
     diff $real out.tmp
