@@ -1,2 +1,16 @@
 Latte language compiler in C++17.
 
+Dependencies:
+- LLVM 3.7
+- ANTLR 4
+
+Building:
+run make from project directory, or use cmake like:
+
+  mkdir build
+  cd build
+  cmake ../
+  make -j32
+
+Building step downloads ANTLR sources and builds them.
+

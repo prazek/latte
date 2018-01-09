@@ -1,7 +1,7 @@
 /* test input */
 
 int main() {
-  //int x = readInt();
+  int x = readInt();
   string y = readString();
   string z = readString();
 
