@@ -1,4 +1,5 @@
 #include "antlr4-runtime.h"
+#include "ControlFlowAnalyzer.h"
 #include "LatteLexer.h"
 #include "LatteParser.h"
 #include "TypeChecker.h"
@@ -7,7 +8,10 @@
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/raw_os_ostream.h"
 #include "llvm/IR/Verifier.h"
-#include "ControlFlowAnalyzer.h"
+#include "llvm/Bitcode/ReaderWriter.h"
+#include "llvm/Linker/Linker.h"
+#include "llvm/IRReader/IRReader.h"
+#include "llvm/Support/SourceMgr.h"
 #include <string>
 #include <fstream>
 
@@ -114,12 +118,42 @@ int main(int argc, const char* argv[]) {
   ostream.flush();
   outFile.flush();
 
-  std::string command = "llvm-as " + llvmFileName + " -o " + bcFileName;
-  std::system(command.c_str());
 
+  std::fstream outBcFile(bcFileName, std::ios_base::out);
+  llvm::raw_os_ostream bitcodeOstream(outBcFile);
+  //module->print(ostream, nullptr);
 
-  std::string linkCommand = "llvm-link -o " + bcFileName + " " + bcFileName + " lib/runtime.ll ";
-  std::system(linkCommand.c_str());
+  //llvm::WriteBitcodeToFile(module.get(), bitcodeOstream);
+
+  //std::string command = "llvm-as " + llvmFileName + " -o " + bcFileName;
+  //std::system(command.c_str());
+
+  //llvm::Linker linker(module.get());
+
+  auto Composite = std::make_unique<llvm::Module>("llvm-link", module->getContext());
+  llvm::Linker L(Composite.get());
+  L.linkInModule(module.get());
+
+  llvm::SMDiagnostic Err;
+  std::unique_ptr<llvm::Module> Result =
+      llvm::getLazyIRFileModule("lib/runtime.ll", Err, module->getContext());
+
+  if (!Result) {
+    /* error */
+    printf("Error! cant load runtime.ll");
+    return 42;
+  }
+
+  if (L.linkInModule(Result.get())) {
+    std::cerr << "Error in linking";
+    return 43;
+  }
+
+  ostream.flush();
+  WriteBitcodeToFile(Composite.get(), bitcodeOstream);
+  bitcodeOstream.flush();
+  //std::string linkCommand = "llvm-link-3.7 -o " + bcFileName + " " + bcFileName + " lib/runtime.ll ";
+  //std::system(linkCommand.c_str());
 
   std::cerr << "OK\n";
   return 0;
