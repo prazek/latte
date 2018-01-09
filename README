@@ -1,7 +1,7 @@
 Latte language compiler in C++17.
 
 Dependencies:
-- LLVM 3.7
+- LLVM 3.9
 - ANTLR 4
 
 Building:

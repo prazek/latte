@@ -130,13 +130,13 @@ int main(int argc, const char* argv[]) {
 
   //llvm::Linker linker(module.get());
 
-  auto Composite = std::make_unique<llvm::Module>("llvm-link", module->getContext());
-  llvm::Linker L(Composite.get());
-  L.linkInModule(module.get());
+  auto Composite = std::make_unique<llvm::Module>("llvm-link", llvmContext);
+  llvm::Linker L(*Composite);
+  L.linkInModule(std::move(module));
 
   llvm::SMDiagnostic Err;
   std::unique_ptr<llvm::Module> Result =
-      llvm::getLazyIRFileModule("lib/runtime.ll", Err, module->getContext());
+      llvm::getLazyIRFileModule("lib/runtime.ll", Err, llvmContext);
 
   if (!Result) {
     /* error */
@@ -144,7 +144,7 @@ int main(int argc, const char* argv[]) {
     return 42;
   }
 
-  if (L.linkInModule(Result.get())) {
+  if (L.linkInModule(std::move(Result))) {
     std::cerr << "Error in linking";
     return 43;
   }
