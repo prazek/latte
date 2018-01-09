@@ -15,8 +15,7 @@ target_link_libraries(runTests antlr4lib)
 
 find_package(LLVM 3.9 REQUIRED
         all-targets analysis asmparser asmprinter bitreader bitwriter codegen core debuginfocodeview debuginfodwarf debuginfomsf debuginfopdb globalisel instcombine ipa ipo instrumentation irreader libdriver linker lto mc mcdisassembler mcparser objcarcopts object option profiledata scalaropts selectiondag support tablegen target transformutils vectorize ${EXTRA_LLVM_MODULES}
-        HINTS /home/students/inf/PUBLIC/MRJP/llvm39
-        )
+        HINTS /home/students/inf/PUBLIC/MRJP/llvm39)
 
 include_directories(${LLVM_INCLUDE_DIRS})
 add_definitions(${LLVM_DEFINITIONS})
