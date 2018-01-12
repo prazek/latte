@@ -553,7 +553,9 @@ antlrcpp::Any TypeChecker::visitClassName(LatteParser::ClassNameContext *ctx) {
 }
 
 antlrcpp::Any TypeChecker::visitClassDef(LatteParser::ClassDefContext *ctx) {
-  assert(4 <= ctx->children.size());
+  context.diagnostic.issueError("Classes not yet supported.", ctx);
+  exit(1);
+    assert(4 <= ctx->children.size());
 
   auto *classType = new ClassType;
   classType->name = ctx->children.at(1)->getText();
@@ -604,4 +606,9 @@ antlrcpp::Any TypeChecker::visitSExp(LatteParser::SExpContext *ctx) {
   return (Stmt*)new ExprStmt(expr);
 }
 
+
+antlrcpp::Any TypeChecker::visitEMemberExpr(LatteParser::EMemberExprContext *ctx) {
+    context.diagnostic.issueError("Classes not supported yet", ctx);
+    exit(1);
+}
 

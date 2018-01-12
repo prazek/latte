@@ -56,7 +56,8 @@ public:
   antlrcpp::Any visitEmpty(LatteParser::EmptyContext *ctx) override;
   antlrcpp::Any visitBlockStmt(LatteParser::BlockStmtContext *ctx) override;
   antlrcpp::Any visitSExp(LatteParser::SExpContext *ctx) override;
-
+    
+  antlrcpp::Any visitEMemberExpr(LatteParser::EMemberExprContext *ctx) override;
 private:
   Expr *handleBinaryBooleans(LatteParser::ExprContext *ctx, BinExpr::BinOp);
   Stmt *handleIncrOrDecr(LatteParser::StmtContext *ctx, const std::string &op);
