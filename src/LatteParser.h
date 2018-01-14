@@ -17,14 +17,14 @@ public:
     T__14 = 15, T__15 = 16, T__16 = 17, T__17 = 18, T__18 = 19, T__19 = 20, 
     T__20 = 21, T__21 = 22, T__22 = 23, T__23 = 24, T__24 = 25, T__25 = 26, 
     T__26 = 27, T__27 = 28, T__28 = 29, T__29 = 30, T__30 = 31, T__31 = 32, 
-    T__32 = 33, T__33 = 34, T__34 = 35, T__35 = 36, T__36 = 37, COMMENT = 38, 
-    MULTICOMMENT = 39, INT = 40, ID = 41, WS = 42, STR = 43
+    T__32 = 33, T__33 = 34, T__34 = 35, T__35 = 36, COMMENT = 37, MULTICOMMENT = 38, 
+    INT = 39, ID = 40, WS = 41, STR = 42
   };
 
   enum {
     RuleProgram = 0, RuleTopDef = 1, RuleClassItem = 2, RuleArg = 3, RuleBlock = 4, 
-    RuleStmt = 5, RuleType_ = 6, RuleItem = 7, RuleExpr = 8, RuleMemberExpr = 9, 
-    RuleAddOp = 10, RuleMulOp = 11, RuleRelOp = 12
+    RuleStmt = 5, RuleType_ = 6, RuleItem = 7, RuleExpr = 8, RuleAddOp = 9, 
+    RuleMulOp = 10, RuleRelOp = 11
   };
 
   LatteParser(antlr4::TokenStream *input);
@@ -46,7 +46,6 @@ public:
   class Type_Context;
   class ItemContext;
   class ExprContext;
-  class MemberExprContext;
   class AddOpContext;
   class MulOpContext;
   class RelOpContext; 
@@ -182,8 +181,8 @@ public:
   public:
     AssContext(StmtContext *ctx);
 
-    antlr4::tree::TerminalNode *ID();
-    ExprContext *expr();
+    std::vector<ExprContext *> expr();
+    ExprContext* expr(size_t i);
     virtual antlrcpp::Any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
   };
 
@@ -191,7 +190,7 @@ public:
   public:
     DecrContext(StmtContext *ctx);
 
-    antlr4::tree::TerminalNode *ID();
+    ExprContext *expr();
     virtual antlrcpp::Any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
   };
 
@@ -240,7 +239,7 @@ public:
   public:
     IncrContext(StmtContext *ctx);
 
-    antlr4::tree::TerminalNode *ID();
+    ExprContext *expr();
     virtual antlrcpp::Any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
   };
 
@@ -370,7 +369,6 @@ public:
   public:
     EFunCallContext(ExprContext *ctx);
 
-    antlr4::tree::TerminalNode *ID();
     std::vector<ExprContext *> expr();
     ExprContext* expr(size_t i);
     virtual antlrcpp::Any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
@@ -414,7 +412,8 @@ public:
   public:
     EMemberExprContext(ExprContext *ctx);
 
-    MemberExprContext *memberExpr();
+    std::vector<ExprContext *> expr();
+    ExprContext* expr(size_t i);
     virtual antlrcpp::Any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
   };
 
@@ -480,61 +479,6 @@ public:
 
   ExprContext* expr();
   ExprContext* expr(int precedence);
-  class  MemberExprContext : public antlr4::ParserRuleContext {
-  public:
-    MemberExprContext(antlr4::ParserRuleContext *parent, size_t invokingState);
-   
-    MemberExprContext() : antlr4::ParserRuleContext() { }
-    void copyFrom(MemberExprContext *context);
-    using antlr4::ParserRuleContext::copyFrom;
-
-    virtual size_t getRuleIndex() const override;
-
-   
-  };
-
-  class  MemExprContext : public MemberExprContext {
-  public:
-    MemExprContext(MemberExprContext *ctx);
-
-    std::vector<antlr4::tree::TerminalNode *> ID();
-    antlr4::tree::TerminalNode* ID(size_t i);
-    virtual antlrcpp::Any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-  };
-
-  class  MemCallrBasicContext : public MemberExprContext {
-  public:
-    MemCallrBasicContext(MemberExprContext *ctx);
-
-    std::vector<antlr4::tree::TerminalNode *> ID();
-    antlr4::tree::TerminalNode* ID(size_t i);
-    std::vector<ExprContext *> expr();
-    ExprContext* expr(size_t i);
-    virtual antlrcpp::Any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-  };
-
-  class  MemCallrContext : public MemberExprContext {
-  public:
-    MemCallrContext(MemberExprContext *ctx);
-
-    MemberExprContext *memberExpr();
-    antlr4::tree::TerminalNode *ID();
-    std::vector<ExprContext *> expr();
-    ExprContext* expr(size_t i);
-    virtual antlrcpp::Any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-  };
-
-  class  MemVarContext : public MemberExprContext {
-  public:
-    MemVarContext(MemberExprContext *ctx);
-
-    MemberExprContext *memberExpr();
-    antlr4::tree::TerminalNode *ID();
-    virtual antlrcpp::Any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-  };
-
-  MemberExprContext* memberExpr();
-  MemberExprContext* memberExpr(int precedence);
   class  AddOpContext : public antlr4::ParserRuleContext {
   public:
     AddOpContext(antlr4::ParserRuleContext *parent, size_t invokingState);
@@ -571,7 +515,6 @@ public:
 
   virtual bool sempred(antlr4::RuleContext *_localctx, size_t ruleIndex, size_t predicateIndex) override;
   bool exprSempred(ExprContext *_localctx, size_t predicateIndex);
-  bool memberExprSempred(MemberExprContext *_localctx, size_t predicateIndex);
 
 private:
   static std::vector<antlr4::dfa::DFA> _decisionToDFA;

@@ -97,14 +97,6 @@ public:
 
     virtual antlrcpp::Any visitEAddOp(LatteParser::EAddOpContext *context) = 0;
 
-    virtual antlrcpp::Any visitMemExpr(LatteParser::MemExprContext *context) = 0;
-
-    virtual antlrcpp::Any visitMemCallrBasic(LatteParser::MemCallrBasicContext *context) = 0;
-
-    virtual antlrcpp::Any visitMemCallr(LatteParser::MemCallrContext *context) = 0;
-
-    virtual antlrcpp::Any visitMemVar(LatteParser::MemVarContext *context) = 0;
-
     virtual antlrcpp::Any visitAddOp(LatteParser::AddOpContext *context) = 0;
 
     virtual antlrcpp::Any visitMulOp(LatteParser::MulOpContext *context) = 0;

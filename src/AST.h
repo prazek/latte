@@ -50,6 +50,12 @@ struct ClassDef final : Def {
   ClassDef() : Def(nullptr) {}
 
 
+
+  // FieldDecl?
+  std::vector<VarDecl* > fieldDels;
+  std::vector<FunctionDef*> methodDecls;
+
+
   std::string dump() const override {
     return "ClassDef";
   }
@@ -96,35 +102,34 @@ struct DeclStmt : public Stmt {
 
 
 struct AssignStmt : Stmt {
-  AssignStmt(VarDecl *decl, Expr *expr)
-      : decl(decl),
-        initializer(expr) {}
+  AssignStmt(Expr *lhs, Expr *rhs)
+      : lhs(lhs),
+        initializer(rhs) {}
 
-  VarDecl *decl;
+
+  Expr *lhs;
   Expr *initializer;
-
-
   std::string dump() const override {
     return "AssignStmt";
   }
 };
 
 struct IncrStmt : Stmt {
-  IncrStmt(VarDecl *decl)
-      : varDecl(decl) {}
+  IncrStmt(Expr *lhs)
+      : lhs(lhs) {}
 
-  VarDecl *varDecl;
 
+  Expr *lhs;
   std::string dump() const override {
     return "IncrStmt:";
   }
 };
 
 struct DecrStmt : Stmt {
-  DecrStmt(VarDecl *decl)
-      : varDecl(decl) {}
+  DecrStmt(Expr *expr)
+      : expr(expr) {}
 
-  VarDecl *varDecl;
+  Expr *expr;
 
   std::string dump() const override {
     return "IncrStmt:";
@@ -191,6 +196,17 @@ struct Expr {
   virtual std::string dump() const = 0;
 };
 
+struct RValueImplicitCast : Expr {
+  RValueImplicitCast(Type *type, Expr *expr)
+      : Expr(type), expr(expr) {}
+
+  Expr *expr;
+
+  std::string dump() const override {
+    return "RValueImplicitCast:";
+  }
+};
+
 struct UnaryExpr : Expr {
   enum class UnOp : uint8_t {
     Minus,
@@ -245,11 +261,20 @@ struct BinExpr : Expr {
 };
 
 struct VarExpr : Expr {
-  VarExpr(VarDecl *decl) : Expr(decl->type) , decl(decl){}
+  VarExpr(VarDecl *decl) : Expr(decl->type), decl(decl){}
   VarDecl *decl;
 
   std::string dump() const override {
     return "VarExpr:" + decl->name;
+  }
+};
+
+struct FunExpr : Expr {
+  FunExpr(FunctionDef *def) : Expr(def->type), def(def) {}
+
+  FunctionDef *def;
+  std::string dump() const override {
+    return "FunExpr:";
   }
 };
 
@@ -272,12 +297,12 @@ struct BooleanExpr : Expr {
 };
 
 struct CallExpr : Expr {
-  CallExpr(FunctionDef *callee)
-      : Expr(callee->getFunType()->returnType), callee(callee) {}
+  CallExpr(Expr *expr, Type *returnType)
+      : Expr(returnType), callee(expr) {}
 
 
   std::vector<Expr*> arguments;
-  FunctionDef *callee;
+  Expr *callee;
 
   std::string dump() const override {
     return "CallExpr";

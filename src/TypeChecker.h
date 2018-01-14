@@ -60,7 +60,6 @@ public:
 private:
   Expr *handleBinaryBooleans(LatteParser::ExprContext *ctx, BinExpr::BinOp);
   Stmt *handleIncrOrDecr(LatteParser::StmtContext *ctx, const std::string &op);
-  Def* visitID(const std::string& varName, antlr4::ParserRuleContext *ctx);
 };
 
 

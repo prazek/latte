@@ -10,15 +10,14 @@
 
 class SimpleType;
 class FunctionType;
+class DerefType;
 
 class Type {
 public:
   bool operator !=(const Type &other) const {
     return !(*this == other);
   }
-  virtual bool operator==(const Type&) const = 0;
-  virtual bool operator==(const SimpleType&) const = 0;
-  virtual bool operator==(const FunctionType&) const = 0;
+  virtual bool operator==(const Type& other) const = 0;
 
   virtual llvm::Type* toLLVMType(llvm::LLVMContext &c) const = 0;
 
@@ -26,6 +25,7 @@ public:
   virtual ~Type() = 0;
 };
 inline Type::~Type() {}
+
 
 class SimpleType final : public Type {
 public:
@@ -57,13 +57,9 @@ public:
     return new SimpleType(POD::String);
   }
 
-  bool operator==(const Type& other) const override {
-    return other == *this;
-  }
-  bool operator==(const SimpleType &other) const override {
-    return pod == other.pod;
-  }
-  virtual bool operator==(const FunctionType&) const override {
+  bool operator==(const Type &other) const override {
+    if (auto *simpleOther = dyn_cast<SimpleType>(other))
+      return pod == simpleOther->pod;
     return false;
   }
 
@@ -147,14 +143,14 @@ public:
   Type *returnType;
   std::vector<Type*> argumentTypes;
 
-  bool operator==(const Type& other) const override {
-    return other == *this;
-  }
-  bool operator==(const SimpleType &) const override {
+
+  bool operator==(const Type &other) const override {
+    if (auto *otherFun = dyn_cast<FunctionType>(other))
+      return this->operator==(*otherFun);
     return false;
   }
 
-  bool operator==(const FunctionType &other) const override {
+  bool operator==(const FunctionType &other) const {
     if (*returnType != *other.returnType)
       return false;
     if (argumentTypes.size() != other.argumentTypes.size())
@@ -216,17 +212,12 @@ public:
     return ss.str();
   }
 
-  bool operator==(const Type& type) const override {
+  // TODO
+  bool operator==(const Type& type) const  {
     if (const auto *ct = dyn_cast<ClassType>(&type)) {
       // Let's add ODR to the language so that this code is correct.
       return name == ct->name;
     }
-    return false;
-  }
-  bool operator==(const SimpleType&) const override {
-    return false;
-  }
-  bool operator==(const FunctionType&) const override {
     return false;
   }
 

@@ -75,13 +75,21 @@ llvm::Value *LLVMCodeGen::visitVarDecl(VarDecl &declItem) {
 llvm::Value *LLVMCodeGen::visitAssignStmt(AssignStmt &assignStmt) {
   llvm::Value* rhs = visitExpr(*assignStmt.initializer);
 
-  llvm::Value* var = varAddr.at(assignStmt.decl);
-  return builder.CreateStore(rhs, var);
+  llvm::Value *addr = visitExpr(*assignStmt.lhs);
+  return builder.CreateStore(rhs, addr);
+}
+
+llvm::Value *LLVMCodeGen::visitRValueImplicitCast(RValueImplicitCast &implicitCast) {
+  llvm::Value * addr = visitExpr(*implicitCast.expr);
+  return builder.CreateLoad(addr);
 }
 
 llvm::Value *LLVMCodeGen::visitVarExpr(VarExpr &varExpr) {
-  auto *value = varAddr.at(varExpr.decl);
-  return builder.CreateLoad(value);
+  return varAddr.at(varExpr.decl);
+}
+
+llvm::Value *LLVMCodeGen::visitFunExpr(FunExpr &funExpr) {
+  return module.getFunction(funExpr.def->name);
 }
 
 llvm::Value *LLVMCodeGen::visitConstIntExpr(ConstIntExpr &constIntExpr) {
@@ -265,7 +273,7 @@ llvm::Value *LLVMCodeGen::visitDeclStmt(DeclStmt &declStmt) {
 }
 
 llvm::Value *LLVMCodeGen::visitCallExpr(CallExpr &callExpr) {
-  llvm::Function *fun = module.getFunction(callExpr.callee->name);
+  auto *fun = llvm::cast<llvm::Function>(visitExpr(*callExpr.callee));
   llvm::SmallVector<llvm::Value*, 4> args;
   for (Expr* arg : callExpr.arguments)
     args.push_back(visitExpr(*arg));
@@ -274,7 +282,7 @@ llvm::Value *LLVMCodeGen::visitCallExpr(CallExpr &callExpr) {
 }
 
 llvm::Value *LLVMCodeGen::visitIncrStmt(IncrStmt &incrStmt) {
-  auto *addr = varAddr[incrStmt.varDecl];
+  auto *addr = visitExpr(*incrStmt.lhs);
   auto *val = builder.CreateLoad(addr);
   auto *newVal = builder.CreateAdd(
       val, llvm::ConstantInt::get(llvm::IntegerType::getInt32Ty(module.getContext()), 1));
@@ -282,7 +290,7 @@ llvm::Value *LLVMCodeGen::visitIncrStmt(IncrStmt &incrStmt) {
 }
 
 llvm::Value *LLVMCodeGen::visitDecrStmt(DecrStmt &incrStmt) {
-  auto *addr = varAddr[incrStmt.varDecl];
+  auto *addr = visitExpr(*incrStmt.expr);
   auto *val = builder.CreateLoad(addr);
   auto *newVal = builder.CreateSub(
       val, llvm::ConstantInt::get(llvm::IntegerType::getInt32Ty(module.getContext()), 1));
@@ -324,3 +332,6 @@ llvm::Value *LLVMCodeGen::getEmptyString() {
   static auto *strVal = getString("");
   return strVal;
 }
+
+
+

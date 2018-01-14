@@ -171,22 +171,6 @@ public:
     return visitChildren(ctx);
   }
 
-  virtual antlrcpp::Any visitMemExpr(LatteParser::MemExprContext *ctx) override {
-    return visitChildren(ctx);
-  }
-
-  virtual antlrcpp::Any visitMemCallrBasic(LatteParser::MemCallrBasicContext *ctx) override {
-    return visitChildren(ctx);
-  }
-
-  virtual antlrcpp::Any visitMemCallr(LatteParser::MemCallrContext *ctx) override {
-    return visitChildren(ctx);
-  }
-
-  virtual antlrcpp::Any visitMemVar(LatteParser::MemVarContext *ctx) override {
-    return visitChildren(ctx);
-  }
-
   virtual antlrcpp::Any visitAddOp(LatteParser::AddOpContext *ctx) override {
     return visitChildren(ctx);
   }

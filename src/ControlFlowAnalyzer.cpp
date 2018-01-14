@@ -110,3 +110,9 @@ ReturnInfo ControlFlowAnalyzer::visitBlock(Block &block) {
   
   return ReturnInfo::EndsWithoutReturn;
 }
+ReturnInfo ControlFlowAnalyzer::visitRValueImplicitCast(RValueImplicitCast &) {
+  return ReturnInfo::OtherExpr;
+}
+ReturnInfo ControlFlowAnalyzer::visitFunExpr(FunExpr &funExpr) {
+  return ReturnInfo::OtherExpr;
+}

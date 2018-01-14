@@ -27,6 +27,8 @@ public:
   void visitConstStringExpr(ConstStringExpr &constStringExpr) override;
   void visitAST(AST &ast) override;
   void visitUnreachableStmt(UnreachableStmt &unreachableStmt) override;
+  void visitRValueImplicitCast(RValueImplicitCast &implicitCast) override;
+  void visitFunExpr(FunExpr &funExpr) override;
 
 private:
   llvm::Module &module;

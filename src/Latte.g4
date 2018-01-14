@@ -26,9 +26,9 @@ stmt
     : ';'                                # Empty
     | block                              # BlockStmt
     | type_ item ( ',' item )* ';'       # Decl
-    | ID '=' expr ';'                    # Ass
-    | ID '++' ';'                        # Incr
-    | ID '--' ';'                        # Decr
+    | expr '=' expr ';'                  # Ass
+    | expr '++' ';'                      # Incr
+    | expr '--' ';'                      # Decr
     | 'return' expr ';'                  # Ret
     | 'return' ';'                       # VRet
     | 'if' '(' expr ')' stmt             # Cond
@@ -51,28 +51,22 @@ item
     ;
 
 expr
-    : ('-'|'!') expr                      # EUnOp
-    | expr mulOp expr                     # EMulOp
-    | expr addOp expr                     # EAddOp
-    | expr relOp expr                     # ERelOp
-    | <assoc=right> expr '&&' expr        # EAnd
-    | <assoc=right> expr '||' expr        # EOr
-    | ID                                  # EId
-    | INT                                 # EInt
-    | 'true'                              # ETrue
-    | 'false'                             # EFalse
-    | ID '(' ( expr ( ',' expr )* )? ')'  # EFunCall
-    | memberExpr                          # EMemberExpr
-    | STR                           # EStr
-    | '(' expr ')'                  # EParen
+    : expr '(' ( expr ( ',' expr )* )? ')'  # EFunCall
+    | ('-'|'!') expr                        # EUnOp
+    | expr mulOp expr                       # EMulOp
+    | expr addOp expr                       # EAddOp
+    | expr relOp expr                       # ERelOp
+    | <assoc=right> expr '&&' expr          # EAnd
+    | <assoc=right> expr '||' expr          # EOr
+    | expr '.' expr                         # EMemberExpr
+    | ID                                    # EId
+    | INT                                   # EInt
+    | 'true'                                # ETrue
+    | 'false'                               # EFalse
+    | STR                                   # EStr
+    | '(' expr ')'                          # EParen
     ;
 
-memberExpr
-    : memberExpr '.' ID '(' ( expr ( ',' expr )* )? ')' #MemCallr
-    | memberExpr '.' ID                                 #MemVar
-    | ID '.' ID '(' ( expr ( ',' expr )* )? ')'         #MemCallrBasic
-    | ID '.' ID                                         #MemExpr
-    ;
 
 addOp
     : '+'

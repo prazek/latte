@@ -79,12 +79,16 @@ public:
   }
 
   virtual T visitExpr(Expr &expr) {
+    if (auto *implicitCast = dyn_cast<RValueImplicitCast>(expr))
+      return visitRValueImplicitCast(*implicitCast);
     if (auto *unExpr = dyn_cast<UnaryExpr>(expr))
       return visitUnaryExpr(*unExpr);
     if (auto *binExpr = dyn_cast<BinExpr>(expr))
       return visitBinExpr(*binExpr);
     if (auto *varExpr = dyn_cast<VarExpr>(expr))
       return visitVarExpr(*varExpr);
+    if (auto *funExpr = dyn_cast<FunExpr>(expr))
+      return visitFunExpr(*funExpr);
     if (auto *constIntExpr = dyn_cast<ConstIntExpr>(expr))
       return visitConstIntExpr(*constIntExpr);
     if (auto *booleanExpr = dyn_cast<BooleanExpr>(expr))
@@ -98,9 +102,11 @@ public:
     llvm_unreachable("Unhandled expr");
   }
 
+  virtual T visitRValueImplicitCast(RValueImplicitCast &implicitCast) = 0;
   virtual T visitUnaryExpr(UnaryExpr &unaryExpr) = 0;
   virtual T visitBinExpr(BinExpr &binExpr) = 0;
   virtual T visitVarExpr(VarExpr &varExpr) = 0;
+  virtual T visitFunExpr(FunExpr &funExpr) = 0;
   virtual T visitConstIntExpr(ConstIntExpr &constIntExpr) = 0;
   virtual T visitBooleanExpr(BooleanExpr &booleanExpr) = 0;
   virtual T visitCallExpr(CallExpr &callExpr) = 0;

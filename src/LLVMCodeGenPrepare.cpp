@@ -58,3 +58,5 @@ void LLVMCodeGenPrepare::visitConstIntExpr(ConstIntExpr &) {}
 void LLVMCodeGenPrepare::visitBooleanExpr(BooleanExpr &) {}
 void LLVMCodeGenPrepare::visitCallExpr(CallExpr &) {}
 void LLVMCodeGenPrepare::visitConstStringExpr(ConstStringExpr &) {}
+void LLVMCodeGenPrepare::visitRValueImplicitCast(RValueImplicitCast &) {}
+void LLVMCodeGenPrepare::visitFunExpr(FunExpr &funExpr) {}

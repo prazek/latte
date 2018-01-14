@@ -33,6 +33,8 @@ public:
   ReturnInfo visitCallExpr(CallExpr &callExpr) override;
   ReturnInfo visitConstStringExpr(ConstStringExpr &constStringExpr) override;
   ReturnInfo visitBlock(Block &block) override;
+  ReturnInfo visitRValueImplicitCast(RValueImplicitCast &implicitCast) override;
+  ReturnInfo visitFunExpr(FunExpr &funExpr) override;
 
 private:
   bool isVoidFunc;

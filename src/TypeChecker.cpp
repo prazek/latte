@@ -19,12 +19,20 @@ antlrcpp::Any TypeChecker::visitStr(LatteParser::StrContext *) {
 }
 
 
+static Expr *getAsRValue(Expr *expr) {
+  // TODO memberExpr
+  if (isa<VarExpr>(expr))
+    return new RValueImplicitCast(expr->type, expr);
+  // No cast needed.
+  return expr;
+}
+
 antlrcpp::Any TypeChecker::visitEMulOp(LatteParser::EMulOpContext *ctx) {
   assert(ctx->children.size() == 3);
   auto *lhs = ctx->children.at(0);
-  Expr *lhsExpr = visit(lhs);
+  Expr *lhsExpr = getAsRValue(visit(lhs));
   auto *rhs = ctx->children.at(2);
-  Expr* rhsExpr = visit(rhs);
+  Expr* rhsExpr = getAsRValue(visit(rhs));
 
   auto getMulOp = [](const auto &op) {
     if (op == "*")
@@ -58,9 +66,9 @@ antlrcpp::Any TypeChecker::visitEMulOp(LatteParser::EMulOpContext *ctx) {
 antlrcpp::Any TypeChecker::visitEAddOp(LatteParser::EAddOpContext *ctx) {
   assert(ctx->children.size() == 3);
   auto *lhs = ctx->children.at(0);
-  Expr *lhsExpr = visit(lhs);
+  Expr *lhsExpr = getAsRValue(visit(lhs));
   auto *rhs = ctx->children.at(2);
-  Expr* rhsExpr = visit(rhs);
+  Expr* rhsExpr = getAsRValue(visit(rhs));
 
   auto getAddOp = [](const auto &op) {
     if (op == "+")
@@ -97,9 +105,9 @@ antlrcpp::Any TypeChecker::visitEAddOp(LatteParser::EAddOpContext *ctx) {
 antlrcpp::Any TypeChecker::visitERelOp(LatteParser::ERelOpContext *ctx) {
   assert(ctx->children.size() == 3);
   auto *lhs = ctx->children.at(0);
-  Expr *lhsExpr = visit(lhs);
+  Expr *lhsExpr = getAsRValue(visit(lhs));
   auto *rhs = ctx->children.at(2);
-  Expr* rhsExpr = visit(rhs);
+  Expr* rhsExpr = getAsRValue(visit(rhs));
 
   auto getRelOp = [](const auto &op) {
     if (op == "<")
@@ -140,28 +148,25 @@ antlrcpp::Any TypeChecker::visitERelOp(LatteParser::ERelOpContext *ctx) {
 antlrcpp::Any TypeChecker::visitAss(LatteParser::AssContext *ctx) {
   assert(ctx->children.size() == 4);
   auto *rhs = ctx->children.at(2);
-  Expr *rhsExpr = visit(rhs);
-  std::string varName = ctx->children.at(0)->getText();
+  Expr *rhsExpr = getAsRValue(visit(rhs));
+  Expr *lhsExpr = visit(ctx->children.at(0));
 
-  if (!variableScope.findName(varName)) {
-    context.diagnostic.issueError("Use of undeclared variable '" + varName + "'", ctx);
+  if (!lhsExpr)
     return (Stmt*)new AssignStmt(nullptr, rhsExpr);
-  }
 
-  if (*variableScope.findName(varName)->type != *rhsExpr->type) {
+  if (*lhsExpr->type != *rhsExpr->type) {
     context.diagnostic.issueError("Cannot assign expression of type '"
                                     + rhsExpr->type->toString()
                                     + "' to variable of type '"
-                                    + variableScope.findName(varName)->type->toString() + "'" , ctx);
+                                    + lhsExpr->type->toString() + "'" , ctx);
     return (Stmt*)new AssignStmt(nullptr, rhsExpr);
   }
 
-  if (auto *varDecl = dyn_cast<VarDecl>(variableScope.findName(varName)))
-    return (Stmt*)new AssignStmt(varDecl, rhsExpr);
+  // TODO memberExpr
+  if (isa<VarExpr>(*lhsExpr))
+    return (Stmt*)new AssignStmt(lhsExpr, rhsExpr);
 
-  context.diagnostic.issueError("Type " + variableScope.findName(varName)->type->toString()
-      + " is not assignable", ctx);
-
+  context.diagnostic.issueError("Not assingable rhs", ctx);
   return (Stmt*)new AssignStmt(nullptr, rhsExpr);
 }
 
@@ -321,26 +326,30 @@ antlrcpp::Any TypeChecker::visitItem(LatteParser::ItemContext *ctx) {
 antlrcpp::Any TypeChecker::visitEId(LatteParser::EIdContext *ctx) {
   assert(ctx->children.size() == 1);
 
-  auto name = ctx->children.front()->getText();
-  VarDecl *def = cast<VarDecl>(visitID(name, ctx));
+  const auto& varName = ctx->children.front()->getText();
+  if (!variableScope.findName(varName)) {
+    context.diagnostic.issueError("Use of undeclared variable '" + varName + "'", ctx);
+    return (Expr*)nullptr;
+  }
 
-  return (Expr*)new VarExpr(def);
+  Def *def = variableScope.findName(varName);
+  if (auto *varDecl = dyn_cast<VarDecl>(def))
+    return (Expr*)new VarExpr(varDecl);
+  return (Expr*)new FunExpr(cast<FunctionDef>(def));
 }
 
 
 Stmt *TypeChecker::handleIncrOrDecr(LatteParser::StmtContext *ctx, const std::string &op) {
   assert(ctx->children.size() == 3);
-  VarDecl * varDecl = cast<VarDecl>(visitID(ctx->children.at(0)->getText(), ctx));
+  Expr *expr = visit(ctx->children.at(0));
 
-  Stmt *incr = (op == "++") ? (Stmt*)new IncrStmt(varDecl) : (Stmt*)new DecrStmt(varDecl);
-  if (varDecl->type == nullptr)
+  Stmt *incr = (op == "++") ? (Stmt*)new IncrStmt(expr) : (Stmt*)new DecrStmt(expr);
+  if (expr->type == nullptr)
     return incr;
 
-  if (!SimpleType::isIntegral(*varDecl->type)) {
-    context.diagnostic.issueError("Can't perform operation " + op + " on variable '"
-                                    + varDecl->name + "' having type '"
-                                    + varDecl->type->toString() + "'", ctx);
-  }
+  if (!SimpleType::isIntegral(*expr->type))
+    context.diagnostic.issueError("Can't perform operation " + op + " type "
+                                    + expr->type->toString() + "'", ctx);
 
   return incr;
 }
@@ -353,15 +362,6 @@ antlrcpp::Any TypeChecker::visitDecr(LatteParser::DecrContext *ctx) {
   return handleIncrOrDecr(ctx, "--");
 }
 
-Def *TypeChecker::visitID(const std::string &varName, antlr4::ParserRuleContext *ctx) {
-
-  if (!variableScope.findName(varName)) {
-    context.diagnostic.issueError("Use of undeclared variable '" + varName + "'", ctx);
-    return nullptr;
-  }
-
-  return variableScope.findName(varName);
-}
 
 antlrcpp::Any TypeChecker::visitEOr(LatteParser::EOrContext *ctx) {
   return handleBinaryBooleans(ctx, BinExpr::BinOp::Or);
@@ -375,9 +375,9 @@ Expr *TypeChecker::handleBinaryBooleans(LatteParser::ExprContext *ctx,
                                         BinExpr::BinOp binOp) {
   assert(ctx->children.size() == 3);
   auto *lhs = ctx->children.at(0);
-  Expr *lhsExpr = visit(lhs);
+  Expr *lhsExpr = getAsRValue(visit(lhs));
   auto *rhs = ctx->children.at(2);
-  Expr* rhsExpr = visit(rhs);
+  Expr* rhsExpr = getAsRValue(visit(rhs));
 
   auto * binExpr = new BinExpr(SimpleType::Bool(), binOp, lhsExpr, rhsExpr);
   if (lhsExpr->type == nullptr || rhsExpr->type == nullptr)
@@ -397,7 +397,7 @@ Expr *TypeChecker::handleBinaryBooleans(LatteParser::ExprContext *ctx,
 
 antlrcpp::Any TypeChecker::visitEUnOp(LatteParser::EUnOpContext *ctx) {
   assert(ctx->children.size() == 2);
-  Expr *expr = visit(ctx->children.at(1));
+  Expr *expr = getAsRValue(visit(ctx->children.at(1)));
   auto op = ctx->children.at(0)->getText();
   if (op == "-") {
     if (!SimpleType::isIntegral(*expr->type)) {
@@ -430,68 +430,70 @@ antlrcpp::Any TypeChecker::visitBlock(LatteParser::BlockContext *ctx) {
 }
 
 antlrcpp::Any TypeChecker::visitEParen(LatteParser::EParenContext *ctx) {
-  return visit(ctx->children.at(1));
+  return getAsRValue(visit(ctx->children.at(1)));
 }
 
 antlrcpp::Any TypeChecker::visitEFunCall(LatteParser::EFunCallContext *ctx) {
   assert(3 <= ctx->children.size());
-  std::string funName = ctx->children.front()->getText();
+  Expr *expr = visit(ctx->children.front());
+  if (!isa<FunExpr>(expr)) {
+    context.diagnostic.issueError(
+        "Type '" + expr->type->toString() + "' can't be called", ctx);
+    return (Expr *) nullptr;
+  }
 
-  Def *def = visitID(funName, ctx);
-  if (auto *funDef =  dyn_cast<FunctionDef>(def)) {
-    auto *callExpr = new CallExpr(cast<FunctionDef>(def));
-    if (ctx->children.size() <= 3) {
-      if (!funDef->arguments.empty())
-        context.diagnostic.issueError("Function '" + funName + "' requires "
-                                          + std::to_string(funDef->getFunType()->argumentTypes.size())
-                                          + " arguments; 0 was provided\n"
-                                      "Function signature: " + funDef->type->toString()
-            , ctx);
-      return (Expr*)callExpr;
-    }
+  auto *funExpr = cast<FunExpr>(expr);
+  auto *funDef =  funExpr->def;
 
-    auto argumentExprs = [this](auto *ctx) {
-      std::vector<Expr*> argumentTypes;
-      for (unsigned i = 2; i < ctx->children.size(); i += 2) {
-        Expr *argumentExpr = visit(ctx->children.at(i));
-        argumentTypes.push_back(argumentExpr);
-      }
-      return argumentTypes;
-    }(ctx);
-
-    callExpr->arguments = argumentExprs;
-
-    if (argumentExprs.size() != funDef->getFunType()->argumentTypes.size()) {
-      context.diagnostic.issueError("Function '" + funName + "' requires "
+  auto *callExpr = new CallExpr(expr, funDef->getFunType()->returnType);
+  if (ctx->children.size() <= 3) {
+    if (!funDef->arguments.empty())
+      context.diagnostic.issueError("Function '" + funDef->name + "' requires "
                                         + std::to_string(funDef->getFunType()->argumentTypes.size())
-                                        + " arguments; " +
-          std::to_string(argumentExprs.size()) + " was provided", ctx);
-      return (Expr*)callExpr;
-    }
-
-
-    for (unsigned i = 0; i < argumentExprs.size(); i++) {
-      if (*argumentExprs.at(i)->type == *funDef->getFunType()->argumentTypes.at(i))
-        continue;
-      context.diagnostic.issueError("Function '" + funName + "' expects type '"
-          + funDef->getFunType()->argumentTypes.at(i)->toString() + "' as argument "
-                                        + std::to_string(funDef->getFunType()->argumentTypes.size())
-                                        + "; got argument of type '"
-                                        + argumentExprs.at(i)->type->toString() +"'"
+                                        + " arguments; 0 was provided\n"
+                                    "Function signature: " + funDef->type->toString()
           , ctx);
-    }
-
     return (Expr*)callExpr;
   }
 
-  context.diagnostic.issueError("Type '" + def->type->toString() + "' can't be called", ctx);
-  return (Expr*) nullptr;
+  auto argumentExprs = [this](auto *ctx) {
+    std::vector<Expr*> argumentTypes;
+    for (unsigned i = 2; i < ctx->children.size(); i += 2) {
+      Expr *argumentExpr = getAsRValue(visit(ctx->children.at(i)));
+      argumentTypes.push_back(argumentExpr);
+    }
+    return argumentTypes;
+  }(ctx);
+
+  callExpr->arguments = argumentExprs;
+
+  if (argumentExprs.size() != funDef->getFunType()->argumentTypes.size()) {
+    context.diagnostic.issueError("Function '" + funDef->name + "' requires "
+                                      + std::to_string(funDef->getFunType()->argumentTypes.size())
+                                      + " arguments; " +
+        std::to_string(argumentExprs.size()) + " was provided", ctx);
+    return (Expr*)callExpr;
+  }
+
+
+  for (unsigned i = 0; i < argumentExprs.size(); i++) {
+    if (*argumentExprs.at(i)->type == *funDef->getFunType()->argumentTypes.at(i))
+      continue;
+    context.diagnostic.issueError("Function '" + funDef->name + "' expects type '"
+        + funDef->getFunType()->argumentTypes.at(i)->toString() + "' as argument "
+                                      + std::to_string(funDef->getFunType()->argumentTypes.size())
+                                      + "; got argument of type '"
+                                      + argumentExprs.at(i)->type->toString() +"'"
+        , ctx);
+  }
+
+  return (Expr*)callExpr;
 
 }
 
 antlrcpp::Any TypeChecker::visitRet(LatteParser::RetContext *ctx) {
   assert(ctx->children.size() == 3);
-  Expr *expr = visit(ctx->children.at(1));
+  Expr *expr = getAsRValue(visit(ctx->children.at(1)));
   if (*expr->type != *currentReturnType)
     context.diagnostic.issueError("Expected expression of type '"
                                       + currentReturnType->toString() +
@@ -511,7 +513,7 @@ antlrcpp::Any TypeChecker::visitVRet(LatteParser::VRetContext *ctx) {
 antlrcpp::Any TypeChecker::visitCond(LatteParser::CondContext *ctx) {
   assert(ctx->children.size() == 5);
 
-  Expr *cond = visit(ctx->children.at(2));
+  Expr *cond = getAsRValue(visit(ctx->children.at(2)));
   if (!SimpleType::isBoolean(*cond->type))
     context.diagnostic.issueError("Expected boolean expr inside if", ctx);
 
@@ -522,7 +524,7 @@ antlrcpp::Any TypeChecker::visitCond(LatteParser::CondContext *ctx) {
 antlrcpp::Any TypeChecker::visitCondElse(LatteParser::CondElseContext *ctx) {
   assert(ctx->children.size() == 7);
 
-  Expr *cond = visit(ctx->children.at(2));
+  Expr *cond = getAsRValue(visit(ctx->children.at(2)));
   if (!SimpleType::isBoolean(*cond->type))
     context.diagnostic.issueError("Expected boolean expr inside if", ctx);
 
@@ -534,7 +536,7 @@ antlrcpp::Any TypeChecker::visitCondElse(LatteParser::CondElseContext *ctx) {
 antlrcpp::Any TypeChecker::visitWhile(LatteParser::WhileContext *ctx) {
   assert(ctx->children.size() == 5);
 
-  Expr *cond = visit(ctx->children.at(2));
+  Expr *cond = getAsRValue(visit(ctx->children.at(2)));
   if (!SimpleType::isBoolean(*cond->type))
     context.diagnostic.issueError("Expected boolean expr inside if", ctx);
 
