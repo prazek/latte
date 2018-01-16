@@ -36,9 +36,10 @@ public:
   ReturnInfo visitRValueImplicitCast(RValueImplicitCast &implicitCast) override;
   ReturnInfo visitFunExpr(FunExpr &funExpr) override;
   ReturnInfo visitMemberExpr(MemberExpr &memberExpr) override;
+  ReturnInfo visitNewExpr(NewExpr &newExpr) override;
+  ReturnInfo visitClassCastExpr(ClassCastExpr &classCastExpr) override;
 
 private:
-  bool isVoidFunc;
   Diagnostic& diagnostics;
 };
 

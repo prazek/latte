@@ -29,6 +29,8 @@ public:
   void visitRValueImplicitCast(RValueImplicitCast &implicitCast) override;
   void visitFunExpr(FunExpr &funExpr) override;
   void visitMemberExpr(MemberExpr &memberExpr) override;
+  void visitNewExpr(NewExpr &newExpr) override;
+  void visitClassCastExpr(ClassCastExpr &classCastExpr) override;
 
 private:
   llvm::Module &module;

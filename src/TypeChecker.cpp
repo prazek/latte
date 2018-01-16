@@ -31,8 +31,9 @@ antlrcpp::Any TypeChecker::visitClassName(LatteParser::ClassNameContext *ctx) {
 }
 
 static Expr *getAsRValue(Expr *expr) {
-  // TODO memberExpr
-  if (isa<VarExpr>(expr))
+  if (!expr)
+    return expr;
+  if (isa<VarExpr>(expr) || isa<MemberExpr>(expr))
     return new RValueImplicitCast(expr->type, expr);
   // No cast needed.
   return expr;
@@ -685,6 +686,19 @@ antlrcpp::Any TypeChecker::visitFieldDecl(LatteParser::FieldDeclContext *ctx) {
   const std::string &name = ctx->children.at(1)->getText();
 
   return new FieldDecl(name, type);
+}
+
+antlrcpp::Any TypeChecker::visitENewExpr(LatteParser::ENewExprContext *ctx) {
+  assert(ctx->children.size() == 2);
+  Type *type = visit(ctx->children.at(1));
+  if (!isa<ClassType>(type)) {
+    context.diagnostic.issueError(
+        "Only class types can be used with new; Got type '" + type->toString() + "'",
+        ctx);
+    return (Expr*)nullptr;
+  }
+
+  return (Expr*)new NewExpr(cast<ClassType>(type));
 }
 
 

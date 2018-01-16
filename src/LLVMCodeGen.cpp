@@ -11,6 +11,7 @@
 
 #include "llvm/IR/Verifier.h"
 #include "BuiltinFunctions.h"
+#include "LLVMClassCodeGen.h"
 
 llvm::Value *LLVMCodeGen::visitFunctionDef(FunctionDef &functionDef) {
 
@@ -344,6 +345,14 @@ llvm::Value *LLVMCodeGen::visitMemberExpr(MemberExpr &memberExpr) {
                            {llvm::ConstantInt::getSigned(
                                llvm::IntegerType::getInt64Ty(module.getContext()),
                                memberExpr.fieldDecl->offset)});
+}
+llvm::Value *LLVMCodeGen::visitNewExpr(NewExpr &newExpr) {
+  auto *fun = module.getFunction(getClassConstructorName(newExpr.getClassType()->name));
+  return builder.CreateCall(fun);
+}
+llvm::Value *LLVMCodeGen::visitClassCastExpr(ClassCastExpr &classCastExpr) {
+  assert(false && "not implemented");
+  return nullptr;
 }
 
 

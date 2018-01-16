@@ -239,5 +239,4 @@ public:
   llvm::Type* toLLVMType(llvm::Module &module) const override {
     return llvm::PointerType::get(module.getTypeByName(name), 0);
   }
-
 };

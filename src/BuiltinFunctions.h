@@ -50,6 +50,7 @@ private:
     funType->argumentTypes.push_back(SimpleType::String());
     return new FunctionDef(funType, StringConcat);
   }
+
 };
 
 

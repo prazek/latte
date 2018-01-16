@@ -119,3 +119,9 @@ ReturnInfo ControlFlowAnalyzer::visitFunExpr(FunExpr &) {
 ReturnInfo ControlFlowAnalyzer::visitMemberExpr(MemberExpr &) {
   return ReturnInfo::OtherExpr;
 }
+ReturnInfo ControlFlowAnalyzer::visitNewExpr(NewExpr &newExpr) {
+  return ReturnInfo::OtherExpr;
+}
+ReturnInfo ControlFlowAnalyzer::visitClassCastExpr(ClassCastExpr &classCastExpr) {
+  return ReturnInfo::OtherExpr;
+}

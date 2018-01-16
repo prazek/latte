@@ -290,6 +290,28 @@ struct BinExpr : Expr {
 
 };
 
+struct NewExpr : Expr {
+  NewExpr(ClassType *type) : Expr(type) {}
+
+
+  ClassType *getClassType() const {
+    return cast<ClassType>(type);
+  }
+  std::string dump() const override {
+    return "NewExpr:";
+  }
+};
+
+struct ClassCastExpr : Expr {
+  ClassCastExpr(ClassType *type, Expr *casted)
+      : Expr(type), casted(casted) {}
+
+  Expr *casted;
+
+  std::string dump() const override {
+    return "ClassCastExpr:";
+  }
+};
 
 struct MemberExpr : Expr {
   MemberExpr(Expr *thisPtr, FieldDecl *fieldDecl)

@@ -1,8 +1,22 @@
 #include "LLVMCodeGenPrepare.h"
 #include "BuiltinFunctions.h"
+#include "LLVMClassCodeGen.h"
 
+
+static void registerMalloc(llvm::Module &module) {
+  //i8* @malloc(i64 %6)
+  auto *funType = llvm::FunctionType::get(
+      llvm::IntegerType::getInt8PtrTy(module.getContext()),
+      {llvm::IntegerType::getInt64Ty(module.getContext())},
+      false);
+
+  llvm::Function::Create(funType,
+                         llvm::Function::ExternalLinkage, "malloc",
+                         &module);
+}
 
 void LLVMCodeGenPrepare::visitAST(AST &ast) {
+  registerMalloc(module);
   for (FunctionDef * functionDef : BuiltinFunctions::getBuiltinFunctions()) {
     auto *funType = llvm::cast<llvm::FunctionType>(functionDef->getFunType()->toLLVMType(module));
     llvm::Function::Create(funType,
@@ -47,7 +61,6 @@ void LLVMCodeGenPrepare::visitFunctionDef(FunctionDef &functionDef) {
   else // Add unreachable
     functionDef.block.stmts.push_back(new UnreachableStmt);
 
-  //visitBlock(functionDef.block);
 }
 
 void LLVMCodeGenPrepare::visitClassDef(ClassDef &def) {
@@ -60,7 +73,9 @@ void LLVMCodeGenPrepare::visitClassDef(ClassDef &def) {
 
   type->setBody(fieldTypes);
 
+  emitClassConstructor(module, def);
 }
+
 void LLVMCodeGenPrepare::visitDeclStmt(DeclStmt &) {}
 void LLVMCodeGenPrepare::visitIncrStmt(IncrStmt &) {}
 void LLVMCodeGenPrepare::visitDecrStmt(DecrStmt &) {}
@@ -78,3 +93,5 @@ void LLVMCodeGenPrepare::visitConstStringExpr(ConstStringExpr &) {}
 void LLVMCodeGenPrepare::visitRValueImplicitCast(RValueImplicitCast &) {}
 void LLVMCodeGenPrepare::visitFunExpr(FunExpr &) {}
 void LLVMCodeGenPrepare::visitMemberExpr(MemberExpr &) {}
+void LLVMCodeGenPrepare::visitNewExpr(NewExpr &newExpr) {}
+void LLVMCodeGenPrepare::visitClassCastExpr(ClassCastExpr &classCastExpr) {}

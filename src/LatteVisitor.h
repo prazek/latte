@@ -85,6 +85,8 @@ public:
 
     virtual antlrcpp::Any visitEStr(LatteParser::EStrContext *context) = 0;
 
+    virtual antlrcpp::Any visitENewExpr(LatteParser::ENewExprContext *context) = 0;
+
     virtual antlrcpp::Any visitEMulOp(LatteParser::EMulOpContext *context) = 0;
 
     virtual antlrcpp::Any visitEAnd(LatteParser::EAndContext *context) = 0;

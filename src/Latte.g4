@@ -59,6 +59,7 @@ expr
     | <assoc=right> expr '&&' expr          # EAnd
     | <assoc=right> expr '||' expr          # EOr
     | expr '.' ID                           # EMemberExpr
+    | 'new' type_                           # ENewExpr
     | ID                                    # EId
     | INT                                   # EInt
     | 'true'                                # ETrue

@@ -147,6 +147,10 @@ public:
     return visitChildren(ctx);
   }
 
+  virtual antlrcpp::Any visitENewExpr(LatteParser::ENewExprContext *ctx) override {
+    return visitChildren(ctx);
+  }
+
   virtual antlrcpp::Any visitEMulOp(LatteParser::EMulOpContext *ctx) override {
     return visitChildren(ctx);
   }

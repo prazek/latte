@@ -10,3 +10,8 @@ class A {
     int b;
 }
 
+void bar() {
+    A a = new A;
+
+}
+
