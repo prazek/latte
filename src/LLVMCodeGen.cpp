@@ -8,7 +8,6 @@
 #include "llvm/IR/DerivedTypes.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/LLVMContext.h"
-#include "llvm/IR/Module.h"
 
 #include "llvm/IR/Verifier.h"
 #include "BuiltinFunctions.h"
@@ -25,7 +24,7 @@ llvm::Value *LLVMCodeGen::visitFunctionDef(FunctionDef &functionDef) {
   for (auto &arg : function->args()) {
     auto *varDecl = functionDef.arguments.at(i++);
 
-    auto *alloca = builder.CreateAlloca(varDecl->type->toLLVMType(module.getContext()));
+    auto *alloca = builder.CreateAlloca(varDecl->type->toLLVMType(module));
     builder.CreateStore(arg.stripPointerCasts(), alloca);
     varAddr[varDecl] = alloca;
   }
@@ -56,7 +55,7 @@ llvm::Value *LLVMCodeGen::defaultInitializer(Type *type) {
 
 llvm::Value *LLVMCodeGen::visitVarDecl(VarDecl &declItem) {
 
-  llvm::Type * Type = declItem.type->toLLVMType(module.getContext());
+  llvm::Type * Type = declItem.type->toLLVMType(module);
   auto *instruction = builder.CreateAlloca(Type);
 
   auto getInitializer = [&](VarDecl &declItem) {
@@ -302,12 +301,15 @@ llvm::Value *LLVMCodeGen::visitUnaryExpr(UnaryExpr &unaryExpr) {
   llvm::Value *value = visitExpr(*unaryExpr.expr);
   switch (unaryExpr.unOp) {
   case UnaryExpr::UnOp::Minus:
-    return builder.CreateSub(llvm::ConstantInt::get(llvm::IntegerType::getInt32Ty(module.getContext()), 0), value);
+    return builder.CreateSub(llvm::ConstantInt::get(
+        llvm::IntegerType::getInt32Ty(module.getContext()), 0), value);
   case UnaryExpr::UnOp::Neg:
-    return builder.CreateXor(value, llvm::ConstantInt::getTrue(llvm::IntegerType::getInt1Ty(module.getContext())));
+    return builder.CreateXor(value, llvm::ConstantInt::getTrue(
+        llvm::IntegerType::getInt1Ty(module.getContext())));
   }
   llvm_unreachable("Unhandled unary op");
 }
+
 llvm::Value *LLVMCodeGen::visitConstStringExpr(ConstStringExpr &constStringExpr) {
   return getString(constStringExpr.string);
 }
@@ -317,7 +319,8 @@ llvm::Value *LLVMCodeGen::getString(const std::string &string) {
                                           string.length() + 1);
   llvm::Constant *initializer = llvm::ConstantDataArray::getString(module.getContext(), string, true);
   llvm::SmallVector<llvm::Value*, 2> const_ptr_5_indices;
-  llvm::ConstantInt* const_int64_6 = llvm::ConstantInt::get(module.getContext(), llvm::APInt(64, llvm::StringRef("0"), 10));
+  llvm::ConstantInt* const_int64_6 =
+      llvm::ConstantInt::get(module.getContext(), llvm::APInt(64, llvm::StringRef("0"), 10));
   const_ptr_5_indices.push_back(const_int64_6);
   const_ptr_5_indices.push_back(const_int64_6);
 
@@ -331,6 +334,16 @@ llvm::Value *LLVMCodeGen::getString(const std::string &string) {
 llvm::Value *LLVMCodeGen::getEmptyString() {
   static auto *strVal = getString("");
   return strVal;
+}
+
+llvm::Value *LLVMCodeGen::visitMemberExpr(MemberExpr &memberExpr) {
+  llvm::Value *thisPtr = visitExpr(*memberExpr.thisPtr);
+
+
+  return builder.CreateGEP(thisPtr,
+                           {llvm::ConstantInt::getSigned(
+                               llvm::IntegerType::getInt64Ty(module.getContext()),
+                               memberExpr.fieldDecl->offset)});
 }
 
 

@@ -18,8 +18,7 @@ public:
       return visitFunctionDef(*funDef);
     if (auto *classDef = dyn_cast<ClassDef>(def))
       return visitClassDef(*classDef);
-    assert(false);
-    return T();
+    llvm_unreachable("Unhandled def");
   }
 
   virtual T visitFunctionDef(FunctionDef &functionDef) = 0;
@@ -87,6 +86,8 @@ public:
       return visitBinExpr(*binExpr);
     if (auto *varExpr = dyn_cast<VarExpr>(expr))
       return visitVarExpr(*varExpr);
+    if (auto *memberExpr = dyn_cast<MemberExpr>(expr))
+      return visitMemberExpr(*memberExpr);
     if (auto *funExpr = dyn_cast<FunExpr>(expr))
       return visitFunExpr(*funExpr);
     if (auto *constIntExpr = dyn_cast<ConstIntExpr>(expr))
@@ -106,6 +107,7 @@ public:
   virtual T visitUnaryExpr(UnaryExpr &unaryExpr) = 0;
   virtual T visitBinExpr(BinExpr &binExpr) = 0;
   virtual T visitVarExpr(VarExpr &varExpr) = 0;
+  virtual T visitMemberExpr(MemberExpr &memberExpr) = 0;
   virtual T visitFunExpr(FunExpr &funExpr) = 0;
   virtual T visitConstIntExpr(ConstIntExpr &constIntExpr) = 0;
   virtual T visitBooleanExpr(BooleanExpr &booleanExpr) = 0;

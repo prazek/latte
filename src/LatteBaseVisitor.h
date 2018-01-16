@@ -27,11 +27,7 @@ public:
     return visitChildren(ctx);
   }
 
-  virtual antlrcpp::Any visitItemVarDecl(LatteParser::ItemVarDeclContext *ctx) override {
-    return visitChildren(ctx);
-  }
-
-  virtual antlrcpp::Any visitItemMethodDef(LatteParser::ItemMethodDefContext *ctx) override {
+  virtual antlrcpp::Any visitFieldDecl(LatteParser::FieldDeclContext *ctx) override {
     return visitChildren(ctx);
   }
 

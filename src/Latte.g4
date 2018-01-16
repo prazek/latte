@@ -10,8 +10,8 @@ topDef
     ;
 
 classItem
-    : type_ item ( ',' item )* ';'       # ItemVarDecl
-    | type_ ID '(' arg? ')' block        # ItemMethodDef
+    : type_ ID ';'             # FieldDecl
+   //| type_ ID '(' arg? ')' block        # ItemMethodDef
     ;
 
 arg
@@ -58,7 +58,7 @@ expr
     | expr relOp expr                       # ERelOp
     | <assoc=right> expr '&&' expr          # EAnd
     | <assoc=right> expr '||' expr          # EOr
-    | expr '.' expr                         # EMemberExpr
+    | expr '.' ID                           # EMemberExpr
     | ID                                    # EId
     | INT                                   # EInt
     | 'true'                                # ETrue

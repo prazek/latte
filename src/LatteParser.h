@@ -113,24 +113,12 @@ public:
    
   };
 
-  class  ItemMethodDefContext : public ClassItemContext {
+  class  FieldDeclContext : public ClassItemContext {
   public:
-    ItemMethodDefContext(ClassItemContext *ctx);
+    FieldDeclContext(ClassItemContext *ctx);
 
     Type_Context *type_();
     antlr4::tree::TerminalNode *ID();
-    BlockContext *block();
-    ArgContext *arg();
-    virtual antlrcpp::Any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
-  };
-
-  class  ItemVarDeclContext : public ClassItemContext {
-  public:
-    ItemVarDeclContext(ClassItemContext *ctx);
-
-    Type_Context *type_();
-    std::vector<ItemContext *> item();
-    ItemContext* item(size_t i);
     virtual antlrcpp::Any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
   };
 
@@ -412,8 +400,8 @@ public:
   public:
     EMemberExprContext(ExprContext *ctx);
 
-    std::vector<ExprContext *> expr();
-    ExprContext* expr(size_t i);
+    ExprContext *expr();
+    antlr4::tree::TerminalNode *ID();
     virtual antlrcpp::Any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
   };
 

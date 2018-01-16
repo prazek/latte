@@ -4,7 +4,6 @@
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/Module.h"
 
-
 class LLVMCodeGenPrepare : public ASTVisitor<void> {
 public:
   LLVMCodeGenPrepare(llvm::Module &module)
@@ -29,6 +28,7 @@ public:
   void visitUnreachableStmt(UnreachableStmt &unreachableStmt) override;
   void visitRValueImplicitCast(RValueImplicitCast &implicitCast) override;
   void visitFunExpr(FunExpr &funExpr) override;
+  void visitMemberExpr(MemberExpr &memberExpr) override;
 
 private:
   llvm::Module &module;

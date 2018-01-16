@@ -37,7 +37,7 @@ struct FunctionDef final : Def {
   std::string name;
   Block block;
 
-  FunctionType *getFunType() {
+  FunctionType *getFunType() const {
     return cast<FunctionType>(type);
   }
 
@@ -46,15 +46,55 @@ struct FunctionDef final : Def {
   }
 };
 
+struct VarDecl final : Def {
+  VarDecl(std::string name, Type* type, Expr *initializer)
+      : Def(type), name(std::move(name)), initializer(initializer) {}
+
+  std::string name;
+  Expr* initializer;
+
+  std::string dump() const override {
+    return "VarDecl: " + name;
+  }
+};
+
+struct FieldDecl final : Def {
+  FieldDecl(std::string name, Type *type)
+      : Def(type), name(std::move(name)) {}
+
+  std::string name;
+  int offset;
+
+  std::string dump() const override {
+    return "FieldDecl:";
+  }
+};
+
 struct ClassDef final : Def {
-  ClassDef() : Def(nullptr) {}
+  ClassDef(std::string className, ClassType *classType)
+      : Def(classType),
+        type(new ClassType(className)),
+        className(std::move(className)) {}
 
 
-
+  ClassType *type;
+  ClassDef *baseClass = nullptr;
+  std::string className;
   // FieldDecl?
-  std::vector<VarDecl* > fieldDels;
-  std::vector<FunctionDef*> methodDecls;
+  std::vector<FieldDecl*> fieldDecls;
+  //std::vector<FunctionDef*> methodDecls;
 
+
+  FieldDecl *getFieldWithName(const std::string& name) {
+    for (auto *fieldDecl : fieldDecls)
+      if (fieldDecl->name == name)
+        return fieldDecl;
+    return nullptr;
+  }
+
+  ClassType *getClassType() const {
+    return cast<ClassType>(type);
+  }
 
   std::string dump() const override {
     return "ClassDef";
@@ -79,17 +119,7 @@ struct BlockStmt : public Stmt {
   }
 };
 
-struct VarDecl final : Def {
-  VarDecl(std::string name, Type* type, Expr *initializer)
-      : Def(type), name(std::move(name)), initializer(initializer) {}
 
-  std::string name;
-  Expr* initializer;
-
-  std::string dump() const override {
-    return "VarDecl: " + name;
-  }
-};
 
 struct DeclStmt : public Stmt {
   Type *type;
@@ -260,6 +290,25 @@ struct BinExpr : Expr {
 
 };
 
+
+struct MemberExpr : Expr {
+  MemberExpr(Expr *thisPtr, FieldDecl *fieldDecl)
+  : Expr(fieldDecl->type), thisPtr(thisPtr), fieldDecl(fieldDecl) {}
+
+  Expr *thisPtr;
+  FieldDecl *fieldDecl;
+  std::string dump() const override {
+    return "MemberExpr:";
+  }
+};
+
+/*
+struct MemberFunExpr : Expr {
+  MemberFunExpr(Expr *thisPtr, ClassDef *classDef, FunctionDef *funDef)
+      : Expr()
+};
+*/
+
 struct VarExpr : Expr {
   VarExpr(VarDecl *decl) : Expr(decl->type), decl(decl){}
   VarDecl *decl;
@@ -268,6 +317,8 @@ struct VarExpr : Expr {
     return "VarExpr:" + decl->name;
   }
 };
+
+
 
 struct FunExpr : Expr {
   FunExpr(FunctionDef *def) : Expr(def->type), def(def) {}

@@ -11,11 +11,17 @@ private:
   Context &context;
 
   VariableScope<Def*> variableScope;
-  bool initialPass;
+  std::unordered_map<std::string, ClassDef*> classes;
+  enum Passes {
+    registerClassesNames,
+    registerFunctionPrototypes,
+    parseClassesWithMethodesPrototypes,
+    parseFuncsAndMethods
+  };
+  Passes currentPass;
   Type *currentReturnType;
 public:
 
-  std::unordered_map<std::string, ClassType*> classTypes;
   AST ast;
 public:
   TypeChecker(Context &context) : context(context) {}
@@ -56,6 +62,8 @@ public:
   antlrcpp::Any visitEmpty(LatteParser::EmptyContext *ctx) override;
   antlrcpp::Any visitBlockStmt(LatteParser::BlockStmtContext *ctx) override;
   antlrcpp::Any visitSExp(LatteParser::SExpContext *ctx) override;
+  antlrcpp::Any visitEMemberExpr(LatteParser::EMemberExprContext *ctx) override;
+  antlrcpp::Any visitFieldDecl(LatteParser::FieldDeclContext *ctx) override;
 
 private:
   Expr *handleBinaryBooleans(LatteParser::ExprContext *ctx, BinExpr::BinOp);

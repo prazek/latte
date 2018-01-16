@@ -113,6 +113,9 @@ ReturnInfo ControlFlowAnalyzer::visitBlock(Block &block) {
 ReturnInfo ControlFlowAnalyzer::visitRValueImplicitCast(RValueImplicitCast &) {
   return ReturnInfo::OtherExpr;
 }
-ReturnInfo ControlFlowAnalyzer::visitFunExpr(FunExpr &funExpr) {
+ReturnInfo ControlFlowAnalyzer::visitFunExpr(FunExpr &) {
+  return ReturnInfo::OtherExpr;
+}
+ReturnInfo ControlFlowAnalyzer::visitMemberExpr(MemberExpr &) {
   return ReturnInfo::OtherExpr;
 }

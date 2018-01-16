@@ -110,7 +110,7 @@ int main(int argc, const char* argv[]) {
   codeGen.visitAST(typeChecker.ast);
   llvm::verifyModule(*module);
 
-  //module->print(llvm::errs(), nullptr);
+  module->print(llvm::errs(), nullptr);
   std::fstream outFile(llvmFileName, std::ios_base::out);
 
   llvm::raw_os_ostream ostream(outFile);

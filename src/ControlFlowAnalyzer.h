@@ -35,6 +35,7 @@ public:
   ReturnInfo visitBlock(Block &block) override;
   ReturnInfo visitRValueImplicitCast(RValueImplicitCast &implicitCast) override;
   ReturnInfo visitFunExpr(FunExpr &funExpr) override;
+  ReturnInfo visitMemberExpr(MemberExpr &memberExpr) override;
 
 private:
   bool isVoidFunc;

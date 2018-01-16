@@ -30,6 +30,7 @@ public:
   llvm::Value *visitUnreachableStmt(UnreachableStmt &unreachableStmt) override;
   llvm::Value *visitRValueImplicitCast(RValueImplicitCast &implicitCast) override;
   llvm::Value *visitFunExpr(FunExpr &funExpr) override;
+  llvm::Value *visitMemberExpr(MemberExpr &memberExpr) override;
 
 private:
   llvm::Value *visitVarDecl(VarDecl &declItem);

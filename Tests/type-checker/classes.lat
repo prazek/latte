@@ -1,5 +1,6 @@
 class A {
-    int a, b;
+    int a;
+    int b;
     void foo() {}
 }
 

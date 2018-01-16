@@ -4,17 +4,24 @@
 
 void LLVMCodeGenPrepare::visitAST(AST &ast) {
   for (FunctionDef * functionDef : BuiltinFunctions::getBuiltinFunctions()) {
-    auto *funType = llvm::cast<llvm::FunctionType>(functionDef->getFunType()->toLLVMType(module.getContext()));
+    auto *funType = llvm::cast<llvm::FunctionType>(functionDef->getFunType()->toLLVMType(module));
     llvm::Function::Create(funType,
                            llvm::Function::ExternalLinkage, functionDef->name,
                            &module);
   }
+  // Register class names
+  for (Def * def : ast.definitions) {
+    if (auto *classDef = dyn_cast<ClassDef>(def))
+      llvm::StructType::create(module.getContext(), classDef->className);
+  }
+
+
   ASTVisitor::visitAST(ast);
 }
 
 
 void LLVMCodeGenPrepare::visitFunctionDef(FunctionDef &functionDef) {
-  auto *funType = llvm::cast<llvm::FunctionType>(functionDef.getFunType()->toLLVMType(module.getContext()));
+  auto *funType = llvm::cast<llvm::FunctionType>(functionDef.getFunType()->toLLVMType(module));
   llvm::Function *function  =
       llvm::Function::Create(funType,
                              llvm::Function::ExternalLinkage, functionDef.name,
@@ -43,7 +50,17 @@ void LLVMCodeGenPrepare::visitFunctionDef(FunctionDef &functionDef) {
   //visitBlock(functionDef.block);
 }
 
-void LLVMCodeGenPrepare::visitClassDef(ClassDef &) {}
+void LLVMCodeGenPrepare::visitClassDef(ClassDef &def) {
+  llvm::StructType *type = module.getTypeByName(def.className);
+
+  llvm::SmallVector<llvm::Type*, 4> fieldTypes;
+  fieldTypes.reserve(def.fieldDecls.size());
+  for (FieldDecl *field : def.fieldDecls)
+    fieldTypes.push_back(field->type->toLLVMType(module));
+
+  type->setBody(fieldTypes);
+
+}
 void LLVMCodeGenPrepare::visitDeclStmt(DeclStmt &) {}
 void LLVMCodeGenPrepare::visitIncrStmt(IncrStmt &) {}
 void LLVMCodeGenPrepare::visitDecrStmt(DecrStmt &) {}
@@ -59,4 +76,5 @@ void LLVMCodeGenPrepare::visitBooleanExpr(BooleanExpr &) {}
 void LLVMCodeGenPrepare::visitCallExpr(CallExpr &) {}
 void LLVMCodeGenPrepare::visitConstStringExpr(ConstStringExpr &) {}
 void LLVMCodeGenPrepare::visitRValueImplicitCast(RValueImplicitCast &) {}
-void LLVMCodeGenPrepare::visitFunExpr(FunExpr &funExpr) {}
+void LLVMCodeGenPrepare::visitFunExpr(FunExpr &) {}
+void LLVMCodeGenPrepare::visitMemberExpr(MemberExpr &) {}

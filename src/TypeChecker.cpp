@@ -3,6 +3,7 @@
 #include "Type.h"
 #include "Utilities.h"
 #include "BuiltinFunctions.h"
+#include "AST.h"
 #include <memory>
 
 antlrcpp::Any TypeChecker::visitBool(LatteParser::BoolContext *) {
@@ -18,6 +19,16 @@ antlrcpp::Any TypeChecker::visitStr(LatteParser::StrContext *) {
   return (Type*)SimpleType::String();
 }
 
+antlrcpp::Any TypeChecker::visitClassName(LatteParser::ClassNameContext *ctx) {
+  const std::string& className = ctx->getText();
+
+  if (!classes.count(className)) {
+    context.diagnostic.issueError("Unknown class type '" + className + "'", ctx);
+    return (Type*)nullptr;
+  }
+
+  return (Type*)classes.at(className)->type;
+}
 
 static Expr *getAsRValue(Expr *expr) {
   // TODO memberExpr
@@ -163,18 +174,20 @@ antlrcpp::Any TypeChecker::visitAss(LatteParser::AssContext *ctx) {
   }
 
   // TODO memberExpr
-  if (isa<VarExpr>(*lhsExpr))
+  if (isa<VarExpr>(*lhsExpr) || isa<MemberExpr>(*lhsExpr))
     return (Stmt*)new AssignStmt(lhsExpr, rhsExpr);
 
-  context.diagnostic.issueError("Not assingable rhs", ctx);
+  context.diagnostic.issueError("Not assingable expr", ctx);
   return (Stmt*)new AssignStmt(nullptr, rhsExpr);
 }
 
 antlrcpp::Any TypeChecker::visitProgram(LatteParser::ProgramContext *ctx) {
   // Open global scope.
   variableScope.openNewScope();
-  initialPass = true;
+  currentPass = Passes::registerClassesNames;
+  LatteBaseVisitor::visitProgram(ctx);
 
+  currentPass = Passes::registerFunctionPrototypes;
   for (FunctionDef * def : BuiltinFunctions::getBuiltinFunctions()) {
     bool isNew = variableScope.addName(def->name, def);
     assert(isNew);
@@ -182,21 +195,100 @@ antlrcpp::Any TypeChecker::visitProgram(LatteParser::ProgramContext *ctx) {
 
   LatteBaseVisitor::visitProgram(ctx);
 
-  initialPass = false;
+  currentPass = Passes::parseClassesWithMethodesPrototypes;
+  LatteBaseVisitor::visitProgram(ctx);
 
+  currentPass = Passes::parseFuncsAndMethods;
   for (auto *children :ctx->children) {
     ast.definitions.push_back(visit(children));
   }
-  //LatteBaseVisitor::visitProgram(ctx);
+
   variableScope.closeScope();
   return {};
 }
 
+
+
+antlrcpp::Any TypeChecker::visitClassDef(LatteParser::ClassDefContext *ctx) {
+  assert(4 <= ctx->children.size());
+  if (currentPass == Passes::registerFunctionPrototypes)
+    return {};
+
+  const auto &className = ctx->children.at(1)->getText();
+  if (currentPass == Passes::registerClassesNames) {
+    auto *classType = new ClassType(className);
+    auto *classDef = new ClassDef(classType->name, classType);
+
+    if (!classes.insert({classType->name, classDef}).second) {
+      context.diagnostic.issueError(
+          "Duplicated name for '" + classType->name + "'", ctx);
+      return (Def *) nullptr;
+    }
+    return (Def*)classDef;
+  }
+
+  if (currentPass == Passes::parseClassesWithMethodesPrototypes) {
+    auto *classDef = classes.at(className);
+
+    unsigned classItemsBeg;
+    if (ctx->children.at(2)->getText() == ":") {
+      classItemsBeg = 5;
+      const std::string &baseClass = ctx->children.at(3)->getText();
+      if (!classes.count(baseClass)) {
+        context.diagnostic.issueError("Unknown class type '" + baseClass + "'",
+                                      ctx);
+      } else if (ClassDef *def = classes.at(baseClass)) {
+        classDef->baseClass = def;
+      }
+
+    } else {
+      classItemsBeg = 3;
+    }
+
+    std::vector<FieldDecl *> fields;
+    auto isDuplicated = [&fields](FieldDecl *newDecl) {
+      for (auto *field : fields)
+        if (field->name == newDecl->name)
+          return true;
+      return false;
+    };
+
+    int currentOffset = 0;
+    for (unsigned i = classItemsBeg; i < ctx->children.size() - 1; i++) {
+      FieldDecl *decl = visit(ctx->children.at(i));
+      decl->offset = currentOffset;
+      currentOffset += decl->type->bytesSize();
+      if (isDuplicated(decl)) {
+        context.diagnostic.issueError(
+            "Duplicated field name '" + decl->name + "'",
+            ctx);
+      } else
+        fields.push_back(decl);
+
+    }
+
+    classDef->fieldDecls = std::move(fields);
+
+    return (Def *) classDef;
+  }
+
+  if (currentPass == Passes::parseFuncsAndMethods) {
+    // TODO parse methods
+    return (Def*) classes.at(className);
+  }
+
+  llvm_unreachable("Should not get here");
+}
+
+
 antlrcpp::Any TypeChecker::visitFuncDef(LatteParser::FuncDefContext *ctx) {
-  // type_ ID '(' arg? ')'
+  if (currentPass == Passes::registerClassesNames
+      || currentPass == Passes::parseClassesWithMethodesPrototypes)
+    return {};
+
   std::string funName = ctx->children.at(1)->getText();
 
-  if (initialPass) {
+  if (currentPass == Passes::registerFunctionPrototypes) {
     auto *funDef = new FunctionDef(nullptr, funName);
     auto * funType = new FunctionType;
     funType->returnType = visit(ctx->children.front());
@@ -242,7 +334,7 @@ antlrcpp::Any TypeChecker::visitArg(LatteParser::ArgContext *ctx) {
     auto * decl = new VarDecl(name, type, nullptr);
 
     arguments.push_back(decl);
-    if (!initialPass) {
+    if (currentPass == Passes::parseFuncsAndMethods) {
       if (!variableScope.addName(decl->name, decl)) {
         context.diagnostic.issueError("redefinition of argument '" + decl->name + "'", ctx);
       }
@@ -544,66 +636,55 @@ antlrcpp::Any TypeChecker::visitWhile(LatteParser::WhileContext *ctx) {
   return (Stmt*) new WhileStmt{cond, stmt};
 }
 
-antlrcpp::Any TypeChecker::visitClassName(LatteParser::ClassNameContext *ctx) {
-  std::string typeName = ctx->getText();
-  if (!classTypes.count(typeName)) {
-    context.diagnostic.issueError("Unknown class type '" + typeName + "'", ctx);
-    return (Type*)nullptr;
-  }
 
-  return (Type*)classTypes.at(typeName);
-}
-
-antlrcpp::Any TypeChecker::visitClassDef(LatteParser::ClassDefContext *ctx) {
-  assert(4 <= ctx->children.size());
-
-  auto *classType = new ClassType;
-  classType->name = ctx->children.at(1)->getText();
-
-  if (classTypes.count(classType->name)) {
-    context.diagnostic.issueError(
-        "Duplicated name for '" + classType->name + "'", ctx);
-    return (Type*)nullptr;
-  } else {
-    classTypes[classType->name] = classType;
-  }
-
-  if (variableScope.findName(classType->name) != nullptr) {
-    context.diagnostic.issueError(
-        "Duplicated name for '" + classType->name + "'", ctx);
-  }
-
-  unsigned classItemsBeg;
-  if (ctx->children.at(2)->getText() == ":") {
-    classItemsBeg = 5;
-    std::string baseClass = ctx->children.at(3)->getText();
-    if (classTypes.count(baseClass)) {
-      classType->baseClass = classTypes.at(baseClass);
-    } else {
-      context.diagnostic.issueError("Unknown class type '" + baseClass + "'", ctx);
-    }
-  } else
-    classItemsBeg = 3;
-
-  for (unsigned i = classItemsBeg; i < ctx->children.size() - 1; i++) {
-    // TODO
-  }
-
-
-
-  return (Type*)classType;
-}
 antlrcpp::Any TypeChecker::visitEmpty(LatteParser::EmptyContext *) {
   return (Stmt*)new EmptyStmt;
 }
+
 antlrcpp::Any TypeChecker::visitBlockStmt(LatteParser::BlockStmtContext *ctx) {
   auto * stmt = new BlockStmt;
   stmt->block = visit(ctx->children.front());
   return (Stmt*)stmt;
 }
+
 antlrcpp::Any TypeChecker::visitSExp(LatteParser::SExpContext *ctx) {
   Expr *expr = visit(ctx->children.front());
   return (Stmt*)new ExprStmt(expr);
+}
+
+antlrcpp::Any TypeChecker::visitEMemberExpr(LatteParser::EMemberExprContext *ctx) {
+  assert(ctx->children.size() == 3);
+  Expr *lhs = visit(ctx->children.at(0));
+
+  if (!isa<ClassType>(lhs->type)) {
+    context.diagnostic.issueError(
+        "Class type expected on the left of '.'; got "
+            + lhs->type->toString() + " instead.", ctx);
+    return (Expr*) nullptr;
+  }
+
+  ClassType *type = cast<ClassType>(lhs->type);
+  ClassDef * classDef = classes.at(type->name);
+
+  const std::string& id = ctx->children.at(2)->getText();
+  FieldDecl *fieldDecl = classDef->getFieldWithName(id);
+
+  if (!fieldDecl) {
+    context.diagnostic.issueError("Unknown filed with name '" + id +
+        "' for class " + classDef->className, ctx);
+    return (Expr*)nullptr;
+  }
+
+  return (Expr*) new MemberExpr(lhs, fieldDecl);
+}
+
+antlrcpp::Any TypeChecker::visitFieldDecl(LatteParser::FieldDeclContext *ctx) {
+  assert(ctx->children.size() == 3);
+
+  Type *type = visit(ctx->children.front());
+  const std::string &name = ctx->children.at(1)->getText();
+
+  return new FieldDecl(name, type);
 }
 
 
