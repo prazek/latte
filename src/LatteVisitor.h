@@ -91,11 +91,15 @@ public:
 
     virtual antlrcpp::Any visitEAnd(LatteParser::EAndContext *context) = 0;
 
+    virtual antlrcpp::Any visitEClassCast(LatteParser::EClassCastContext *context) = 0;
+
     virtual antlrcpp::Any visitEParen(LatteParser::EParenContext *context) = 0;
 
     virtual antlrcpp::Any visitEFalse(LatteParser::EFalseContext *context) = 0;
 
     virtual antlrcpp::Any visitEAddOp(LatteParser::EAddOpContext *context) = 0;
+
+    virtual antlrcpp::Any visitENull(LatteParser::ENullContext *context) = 0;
 
     virtual antlrcpp::Any visitAddOp(LatteParser::AddOpContext *context) = 0;
 

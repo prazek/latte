@@ -701,4 +701,22 @@ antlrcpp::Any TypeChecker::visitENewExpr(LatteParser::ENewExprContext *ctx) {
   return (Expr*)new NewExpr(cast<ClassType>(type));
 }
 
+antlrcpp::Any TypeChecker::visitEClassCast(LatteParser::EClassCastContext *ctx) {
+  assert(ctx->children.size() == 4);
+  Type *type = visit(ctx->children.at(1));
+  Expr *expr = visit(ctx->children.at(3));
+
+  if (!isa<ClassType>(type)) {
+    context.diagnostic.issueError("Expected class type", ctx);
+    return new ClassCastExpr(nullptr, expr);
+  }
+
+  // TODO handle class casts
+  if (!SimpleType::isNull(*expr->type)) {
+    context.diagnostic.issueError("Only null can be casted", ctx);
+  }
+
+  return (Expr*)new ClassCastExpr(cast<ClassType>(type), expr);
+}
+
 

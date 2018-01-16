@@ -159,6 +159,10 @@ public:
     return visitChildren(ctx);
   }
 
+  virtual antlrcpp::Any visitEClassCast(LatteParser::EClassCastContext *ctx) override {
+    return visitChildren(ctx);
+  }
+
   virtual antlrcpp::Any visitEParen(LatteParser::EParenContext *ctx) override {
     return visitChildren(ctx);
   }
@@ -168,6 +172,10 @@ public:
   }
 
   virtual antlrcpp::Any visitEAddOp(LatteParser::EAddOpContext *ctx) override {
+    return visitChildren(ctx);
+  }
+
+  virtual antlrcpp::Any visitENull(LatteParser::ENullContext *ctx) override {
     return visitChildren(ctx);
   }
 

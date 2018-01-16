@@ -93,5 +93,5 @@ void LLVMCodeGenPrepare::visitConstStringExpr(ConstStringExpr &) {}
 void LLVMCodeGenPrepare::visitRValueImplicitCast(RValueImplicitCast &) {}
 void LLVMCodeGenPrepare::visitFunExpr(FunExpr &) {}
 void LLVMCodeGenPrepare::visitMemberExpr(MemberExpr &) {}
-void LLVMCodeGenPrepare::visitNewExpr(NewExpr &newExpr) {}
-void LLVMCodeGenPrepare::visitClassCastExpr(ClassCastExpr &classCastExpr) {}
+void LLVMCodeGenPrepare::visitNewExpr(NewExpr &) {}
+void LLVMCodeGenPrepare::visitClassCastExpr(ClassCastExpr &) {}

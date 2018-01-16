@@ -36,6 +36,7 @@ public:
     Int,
     Bool,
     String,
+    Null,
   };
 
   SimpleType(POD pod) : pod(pod) {}
@@ -59,6 +60,9 @@ public:
     return new SimpleType(POD::String);
   }
 
+  static SimpleType* Null() {
+    return new SimpleType(POD::Null);
+  }
   bool operator==(const Type &other) const override {
     if (auto *simpleOther = dyn_cast<SimpleType>(other))
       return pod == simpleOther->pod;
@@ -80,6 +84,10 @@ public:
     return pod == POD::String;
   }
 
+  bool isNull() const {
+    return pod == POD::Null;
+  }
+
   std::string toString() const override {
     switch (pod) {
       case POD::Void:
@@ -90,6 +98,8 @@ public:
         return "int";
       case POD::String:
         return "string";
+      case POD::Null:
+        return "null";
     }
     llvm_unreachable("unhandled type");
   }
@@ -104,8 +114,10 @@ public:
       return 4;
     case POD::String:
       return 8;
+    case POD::Null:
+      return 8;
     }
-    llvm_unreachable("unhandled type");
+    llvm_unreachable("Unhandled type");
   }
 
   static bool isIntegral(const Type& type) {
@@ -132,6 +144,13 @@ public:
     return false;
   }
 
+  static bool isNull(const Type& type) {
+    if (auto *st = dyn_cast<SimpleType>(type))
+      return st->isNull();
+    return false;
+  }
+
+
   llvm::Type *toLLVMType(llvm::Module &module) const override {
     switch (pod) {
       case POD::Void:
@@ -142,11 +161,12 @@ public:
         return llvm::Type::getInt32Ty(module.getContext());
       case POD::String:
         return llvm::Type::getInt8PtrTy(module.getContext());
+      case POD::Null:
+        return llvm::Type::getInt8PtrTy(module.getContext());
     }
-    assert(false);
+    llvm_unreachable("Unhandled pod");
   }
 
-  POD getPOD() const { return pod; }
 
   ~SimpleType() override = default;
 private:

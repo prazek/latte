@@ -393,6 +393,14 @@ struct ConstStringExpr : Expr {
   }
 };
 
+struct NullExpr : Expr {
+  NullExpr() : Expr(SimpleType::Null()) {}
+
+  std::string dump() const override {
+    return "NullExpr:";
+  }
+};
+
 struct ParenExpr : Expr {
   ParenExpr(Expr *expr) : Expr(expr->type) {}
 

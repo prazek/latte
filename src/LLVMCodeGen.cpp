@@ -351,8 +351,9 @@ llvm::Value *LLVMCodeGen::visitNewExpr(NewExpr &newExpr) {
   return builder.CreateCall(fun);
 }
 llvm::Value *LLVMCodeGen::visitClassCastExpr(ClassCastExpr &classCastExpr) {
-  assert(false && "not implemented");
-  return nullptr;
+  auto *castedValue = visitExpr(*classCastExpr.casted);
+  // TODO casting not null?
+  return builder.CreateBitCast(castedValue, classCastExpr.type->toLLVMType(module));
 }
 
 

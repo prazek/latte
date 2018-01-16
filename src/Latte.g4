@@ -65,7 +65,9 @@ expr
     | 'true'                                # ETrue
     | 'false'                               # EFalse
     | STR                                   # EStr
+    | 'null'                                # ENull
     | '(' expr ')'                          # EParen
+    | '(' type_ ')' expr                    # EClassCast
     ;
 
 
