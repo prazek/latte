@@ -31,6 +31,7 @@ public:
   void visitMemberExpr(MemberExpr &memberExpr) override;
   void visitNewExpr(NewExpr &newExpr) override;
   void visitClassCastExpr(ClassCastExpr &classCastExpr) override;
+  void visitNullExpr(NullExpr &nullExpr) override;
 
 private:
   llvm::Module &module;

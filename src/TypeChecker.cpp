@@ -718,5 +718,8 @@ antlrcpp::Any TypeChecker::visitEClassCast(LatteParser::EClassCastContext *ctx) 
 
   return (Expr*)new ClassCastExpr(cast<ClassType>(type), expr);
 }
+antlrcpp::Any TypeChecker::visitENull(LatteParser::ENullContext *ctx) {
+  return (Expr*)new NullExpr();
+}
 
 

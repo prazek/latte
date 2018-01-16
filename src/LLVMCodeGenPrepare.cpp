@@ -95,3 +95,4 @@ void LLVMCodeGenPrepare::visitFunExpr(FunExpr &) {}
 void LLVMCodeGenPrepare::visitMemberExpr(MemberExpr &) {}
 void LLVMCodeGenPrepare::visitNewExpr(NewExpr &) {}
 void LLVMCodeGenPrepare::visitClassCastExpr(ClassCastExpr &) {}
+void LLVMCodeGenPrepare::visitNullExpr(NullExpr &) {}

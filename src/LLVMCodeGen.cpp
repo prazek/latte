@@ -51,6 +51,12 @@ llvm::Value *LLVMCodeGen::defaultInitializer(Type *type) {
       return getEmptyString();
     llvm_unreachable("No other initializers for simple types");
   }
+  if (isa<ClassType>(type)) {
+    auto *null = llvm::ConstantPointerNull::getNullValue(
+        llvm::IntegerType::getInt8PtrTy(module.getContext()));
+    return builder.CreateBitCast(null, type->toLLVMType(module));
+  }
+
   llvm_unreachable("Unhandled type");
 }
 
@@ -76,6 +82,7 @@ llvm::Value *LLVMCodeGen::visitAssignStmt(AssignStmt &assignStmt) {
   llvm::Value* rhs = visitExpr(*assignStmt.initializer);
 
   llvm::Value *addr = visitExpr(*assignStmt.lhs);
+
   return builder.CreateStore(rhs, addr);
 }
 
@@ -172,6 +179,7 @@ llvm::Value *LLVMCodeGen::visitBinExpr(BinExpr &binExpr) {
 
   llvm::Value *lhs = visitExpr(*binExpr.lhs);
   llvm::Value *rhs = visitExpr(*binExpr.rhs);
+
   switch (binExpr.binOp) {
   case BinExpr::BinOp::LESS:
     return builder.CreateICmpSLT(lhs, rhs);
@@ -338,13 +346,15 @@ llvm::Value *LLVMCodeGen::getEmptyString() {
 }
 
 llvm::Value *LLVMCodeGen::visitMemberExpr(MemberExpr &memberExpr) {
-  llvm::Value *thisPtr = visitExpr(*memberExpr.thisPtr);
+  llvm::Value *stackPtr = visitExpr(*memberExpr.thisPtr);
 
-
-  return builder.CreateGEP(thisPtr,
+  auto *thisPtr = builder.CreateLoad(stackPtr);
+  auto *gep = builder.CreateGEP(thisPtr,
                            {llvm::ConstantInt::getSigned(
                                llvm::IntegerType::getInt64Ty(module.getContext()),
                                memberExpr.fieldDecl->offset)});
+
+  return builder.CreateBitCast(gep, memberExpr.type->toLLVMType(module)->getPointerTo(0));
 }
 llvm::Value *LLVMCodeGen::visitNewExpr(NewExpr &newExpr) {
   auto *fun = module.getFunction(getClassConstructorName(newExpr.getClassType()->name));
@@ -354,6 +364,9 @@ llvm::Value *LLVMCodeGen::visitClassCastExpr(ClassCastExpr &classCastExpr) {
   auto *castedValue = visitExpr(*classCastExpr.casted);
   // TODO casting not null?
   return builder.CreateBitCast(castedValue, classCastExpr.type->toLLVMType(module));
+}
+llvm::Value *LLVMCodeGen::visitNullExpr(NullExpr &) {
+  return llvm::ConstantPointerNull::get(llvm::IntegerType::getInt8PtrTy(module.getContext()));
 }
 
 

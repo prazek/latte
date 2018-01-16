@@ -104,6 +104,8 @@ public:
       return visitConstStringExpr(*constStringExpr);
     if (auto *parenExpr = dyn_cast<ParenExpr>(expr))
       return visitParenExpr(*parenExpr);
+    if (auto *nullExpr = dyn_cast<NullExpr>(expr))
+      return visitNullExpr(*nullExpr);
     llvm_unreachable("Unhandled expr");
   }
 
@@ -122,6 +124,8 @@ public:
   virtual T visitParenExpr(ParenExpr &parenExpr) {
     return visitExpr(*parenExpr.expr);
   }
+  virtual T visitNullExpr(NullExpr &nullExpr) = 0;
+
 };
 
 

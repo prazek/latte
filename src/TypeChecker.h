@@ -66,6 +66,7 @@ public:
   antlrcpp::Any visitFieldDecl(LatteParser::FieldDeclContext *ctx) override;
   antlrcpp::Any visitENewExpr(LatteParser::ENewExprContext *ctx) override;
   antlrcpp::Any visitEClassCast(LatteParser::EClassCastContext *ctx) override;
+  antlrcpp::Any visitENull(LatteParser::ENullContext *ctx) override;
 
 private:
   Expr *handleBinaryBooleans(LatteParser::ExprContext *ctx, BinExpr::BinOp);

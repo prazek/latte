@@ -125,3 +125,6 @@ ReturnInfo ControlFlowAnalyzer::visitNewExpr(NewExpr &) {
 ReturnInfo ControlFlowAnalyzer::visitClassCastExpr(ClassCastExpr &) {
   return ReturnInfo::OtherExpr;
 }
+ReturnInfo ControlFlowAnalyzer::visitNullExpr(NullExpr &) {
+  return ReturnInfo::OtherExpr;
+}

@@ -1,4 +1,13 @@
+class list {
+  int elem;
+  list next;
+}
 
+void test(list list) {
+  list.next;
+}
+
+/*
 A foo(A a) {
     a.a = 42;
     a.b = 21;
@@ -10,8 +19,19 @@ class A {
     int b;
 }
 
-void bar() {
+int main() {
     A a = new A;
+    a.a = 42;
+    a.b = 31;
+    printInt(a.a);
+    printInt(a.b);
+    if (a != (A)null) {
+        printInt(2137);
+    }
 
+    return 0;
 }
+*/
+
+
 

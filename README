@@ -14,3 +14,6 @@ run make from project directory, or use cmake like:
 
 Building step downloads ANTLR sources and builds them.
 
+Implemented optimizations:
+-
+-

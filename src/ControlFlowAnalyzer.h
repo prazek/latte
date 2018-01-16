@@ -38,6 +38,7 @@ public:
   ReturnInfo visitMemberExpr(MemberExpr &memberExpr) override;
   ReturnInfo visitNewExpr(NewExpr &newExpr) override;
   ReturnInfo visitClassCastExpr(ClassCastExpr &classCastExpr) override;
+  ReturnInfo visitNullExpr(NullExpr &nullExpr) override;
 
 private:
   Diagnostic& diagnostics;

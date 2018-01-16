@@ -33,6 +33,7 @@ public:
   llvm::Value *visitMemberExpr(MemberExpr &memberExpr) override;
   llvm::Value *visitNewExpr(NewExpr &newExpr) override;
   llvm::Value *visitClassCastExpr(ClassCastExpr &classCastExpr) override;
+  llvm::Value *visitNullExpr(NullExpr &nullExpr) override;
 
 private:
   llvm::Value *visitVarDecl(VarDecl &declItem);
