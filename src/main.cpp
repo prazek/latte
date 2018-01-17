@@ -108,9 +108,9 @@ int main(int argc, const char* argv[]) {
 
   LLVMCodeGen codeGen(*module);
   codeGen.visitAST(typeChecker.ast);
-  llvm::verifyModule(*module);
+  llvm::verifyModule(*module, &llvm::errs());
 
-  module->print(llvm::errs(), nullptr);
+  //module->print(llvm::errs(), nullptr);
   std::fstream outFile(llvmFileName, std::ios_base::out);
 
   llvm::raw_os_ostream ostream(outFile);

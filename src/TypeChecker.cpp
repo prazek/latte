@@ -4,6 +4,7 @@
 #include "Utilities.h"
 #include "BuiltinFunctions.h"
 #include "AST.h"
+#include "ASTUtils.h"
 #include <memory>
 
 antlrcpp::Any TypeChecker::visitBool(LatteParser::BoolContext *) {
@@ -28,15 +29,6 @@ antlrcpp::Any TypeChecker::visitClassName(LatteParser::ClassNameContext *ctx) {
   }
 
   return (Type*)classes.at(className)->type;
-}
-
-static Expr *getAsRValue(Expr *expr) {
-  if (!expr)
-    return expr;
-  if (isa<VarExpr>(expr) || isa<MemberExpr>(expr))
-    return new RValueImplicitCast(expr->type, expr);
-  // No cast needed.
-  return expr;
 }
 
 antlrcpp::Any TypeChecker::visitEMulOp(LatteParser::EMulOpContext *ctx) {
@@ -182,6 +174,8 @@ antlrcpp::Any TypeChecker::visitAss(LatteParser::AssContext *ctx) {
   return (Stmt*)new AssignStmt(nullptr, rhsExpr);
 }
 
+
+
 antlrcpp::Any TypeChecker::visitProgram(LatteParser::ProgramContext *ctx) {
   // Open global scope.
   variableScope.openNewScope();
@@ -201,7 +195,8 @@ antlrcpp::Any TypeChecker::visitProgram(LatteParser::ProgramContext *ctx) {
 
   currentPass = Passes::parseFuncsAndMethods;
   for (auto *children :ctx->children) {
-    ast.definitions.push_back(visit(children));
+    Def *def = visit(children);
+    ast.definitions.push_back(def);
   }
 
   variableScope.closeScope();
@@ -254,11 +249,10 @@ antlrcpp::Any TypeChecker::visitClassDef(LatteParser::ClassDefContext *ctx) {
       return false;
     };
 
-    int currentOffset = 0;
+    int currentID = 0;
     for (unsigned i = classItemsBeg; i < ctx->children.size() - 1; i++) {
       FieldDecl *decl = visit(ctx->children.at(i));
-      decl->offset = currentOffset;
-      currentOffset += decl->type->bytesSize();
+      decl->fieldId = currentID++;
       if (isDuplicated(decl)) {
         context.diagnostic.issueError(
             "Duplicated field name '" + decl->name + "'",
@@ -345,21 +339,22 @@ antlrcpp::Any TypeChecker::visitArg(LatteParser::ArgContext *ctx) {
 }
 
 antlrcpp::Any TypeChecker::visitEInt(LatteParser::EIntContext *ctx) {
-  return (Expr*)new ConstIntExpr(SimpleType::Int(), std::stoi(ctx->getText()));
+  return (Expr*)new ConstIntExpr(std::stoi(ctx->getText()));
 }
 
 antlrcpp::Any TypeChecker::visitEFalse(LatteParser::EFalseContext *) {
-  return (Expr*) new BooleanExpr(SimpleType::Bool(), false);
+  return (Expr*) new BooleanExpr(false);
 }
 
 antlrcpp::Any TypeChecker::visitETrue(LatteParser::ETrueContext *) {
-  return (Expr*) new BooleanExpr(SimpleType::Bool(), true);
+  return (Expr*) new BooleanExpr(true);
 }
 
 antlrcpp::Any TypeChecker::visitEStr(LatteParser::EStrContext *ctx) {
   std::string str = ctx->getText().substr(1, ctx->getText().size() - 2);
-  return (Expr*) new ConstStringExpr(SimpleType::String(), std::move(str));
+  return (Expr*) new ConstStringExpr(std::move(str));
 }
+
 
 antlrcpp::Any TypeChecker::visitDecl(LatteParser::DeclContext *ctx) {
   assert(ctx->children.size() >= 3);
@@ -379,9 +374,12 @@ antlrcpp::Any TypeChecker::visitDecl(LatteParser::DeclContext *ctx) {
     auto *item = ctx->children.at(i);
     VarDecl *declItem = visit(item);
     declItem->type = type;
+    if (!declItem->initializer)
+      declItem->initializer = getDefaultInitializer(*declItem->type);
+
     declStmt->decls.push_back(declItem);
 
-    if (declItem->initializer != nullptr && *declItem->initializer->type != *type) {
+    if (*declItem->initializer->type != *type) {
       context.diagnostic.issueError(
         "Cannot initialize variable '"
           + declItem->name + "' of type '" + type->toString() +
@@ -718,7 +716,7 @@ antlrcpp::Any TypeChecker::visitEClassCast(LatteParser::EClassCastContext *ctx) 
 
   return (Expr*)new ClassCastExpr(cast<ClassType>(type), expr);
 }
-antlrcpp::Any TypeChecker::visitENull(LatteParser::ENullContext *ctx) {
+antlrcpp::Any TypeChecker::visitENull(LatteParser::ENullContext *) {
   return (Expr*)new NullExpr();
 }
 

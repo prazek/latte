@@ -23,14 +23,27 @@ void LLVMCodeGenPrepare::visitAST(AST &ast) {
                            llvm::Function::ExternalLinkage, functionDef->name,
                            &module);
   }
-  // Register class names
+  std::vector<Def*> ctorsDefs;
   for (Def * def : ast.definitions) {
-    if (auto *classDef = dyn_cast<ClassDef>(def))
+    if (auto *classDef = dyn_cast<ClassDef>(def)) {
+      // Register class names
       llvm::StructType::create(module.getContext(), classDef->className);
+      ctorsDefs.push_back(createConstructor(*classDef));
+    }
   }
+  // Add constructors.
+  ast.definitions.insert(ast.definitions.end(),
+                         std::move_iterator(ctorsDefs.begin()),
+                         std::move_iterator(ctorsDefs.end()));
 
 
   ASTVisitor::visitAST(ast);
+
+  for (Def *def :ast.definitions) {
+    if (auto *classDef = dyn_cast<ClassDef>(def)) {
+      emitNewOperator(module, *classDef);
+    }
+  }
 }
 
 
@@ -72,8 +85,6 @@ void LLVMCodeGenPrepare::visitClassDef(ClassDef &def) {
     fieldTypes.push_back(field->type->toLLVMType(module));
 
   type->setBody(fieldTypes);
-
-  emitClassConstructor(module, def);
 }
 
 void LLVMCodeGenPrepare::visitDeclStmt(DeclStmt &) {}

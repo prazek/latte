@@ -63,7 +63,7 @@ struct FieldDecl final : Def {
       : Def(type), name(std::move(name)) {}
 
   std::string name;
-  int offset;
+  unsigned fieldId;
 
   std::string dump() const override {
     return "FieldDecl:";
@@ -352,7 +352,7 @@ struct FunExpr : Expr {
 };
 
 struct ConstIntExpr : Expr {
-  ConstIntExpr(Type* type, int32_t value) : Expr(type), value(value) {}
+  ConstIntExpr(int32_t value) : Expr(SimpleType::Int()), value(value) {}
   int32_t value;
 
   std::string dump() const override {
@@ -361,7 +361,7 @@ struct ConstIntExpr : Expr {
 };
 
 struct BooleanExpr : Expr {
-  BooleanExpr(Type* type, bool value) : Expr(type), value(value) {}
+  BooleanExpr(bool value) : Expr(SimpleType::Bool()), value(value) {}
   bool value;
 
   std::string dump() const override {
@@ -383,8 +383,8 @@ struct CallExpr : Expr {
 };
 
 struct ConstStringExpr : Expr {
-  ConstStringExpr(Type *type, std::string string)
-      : Expr(type), string(std::move(string)) {}
+  ConstStringExpr(std::string string)
+      : Expr(SimpleType::String()), string(std::move(string)) {}
 
   std::string string;
 

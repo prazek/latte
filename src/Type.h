@@ -23,7 +23,6 @@ public:
   virtual llvm::Type* toLLVMType(llvm::Module &c) const = 0;
 
   virtual std::string toString() const = 0;
-  virtual int bytesSize() const = 0;
   virtual ~Type() = 0;
 };
 inline Type::~Type() {}
@@ -104,22 +103,6 @@ public:
     llvm_unreachable("unhandled type");
   }
 
-  int bytesSize() const override {
-    switch (pod) {
-    case POD::Void:
-      return 0;
-    case POD::Bool:
-      return 1;
-    case POD::Int:
-      return 4;
-    case POD::String:
-      return 8;
-    case POD::Null:
-      return 8;
-    }
-    llvm_unreachable("Unhandled type");
-  }
-
   static bool isIntegral(const Type& type) {
     if (auto *st = dyn_cast<SimpleType>(type))
       return st->isInt();
@@ -167,10 +150,10 @@ public:
     llvm_unreachable("Unhandled pod");
   }
 
-
-  ~SimpleType() override = default;
-private:
   POD pod;
+  ~SimpleType() override = default;
+
+
 };
 
 
@@ -212,9 +195,6 @@ public:
     return ss.str();
   }
 
-  int bytesSize() const override {
-    return 8;
-  }
 
   llvm::Type *toLLVMType(llvm::Module &module) const override {
     llvm::Type * retTy = returnType->toLLVMType(module);
@@ -242,10 +222,6 @@ public:
 
   std::string dump() const {
     return "Class:";
-  }
-
-  int bytesSize() const override {
-    return 8;
   }
 
   bool operator==(const Type& type) const  {

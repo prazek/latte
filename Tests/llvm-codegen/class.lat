@@ -7,7 +7,7 @@ void test(list list) {
   list.next;
 }
 
-/*
+
 A foo(A a) {
     a.a = 42;
     a.b = 21;
@@ -31,7 +31,7 @@ int main() {
 
     return 0;
 }
-*/
+
 
 
 

@@ -1,0 +1,8 @@
+
+int foo(int p) {
+    return p;
+}
+
+int main() {
+    return foo(0);
+}

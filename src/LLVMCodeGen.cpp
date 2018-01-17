@@ -41,37 +41,13 @@ llvm::Value *LLVMCodeGen::visitClassDef(ClassDef &/*classDef*/) {
   return nullptr;
 }
 
-llvm::Value *LLVMCodeGen::defaultInitializer(Type *type) {
-  if (auto *simpleType = dyn_cast<SimpleType>(type)) {
-    if (simpleType->isBool())
-      return llvm::ConstantInt::getFalse(llvm::IntegerType::getInt1Ty(module.getContext()));
-    if (simpleType->isInt())
-      return llvm::ConstantInt::get(llvm::IntegerType::getInt32Ty(module.getContext()), 0);
-    if (simpleType->isString())
-      return getEmptyString();
-    llvm_unreachable("No other initializers for simple types");
-  }
-  if (isa<ClassType>(type)) {
-    auto *null = llvm::ConstantPointerNull::getNullValue(
-        llvm::IntegerType::getInt8PtrTy(module.getContext()));
-    return builder.CreateBitCast(null, type->toLLVMType(module));
-  }
-
-  llvm_unreachable("Unhandled type");
-}
 
 llvm::Value *LLVMCodeGen::visitVarDecl(VarDecl &declItem) {
 
   llvm::Type * Type = declItem.type->toLLVMType(module);
   auto *instruction = builder.CreateAlloca(Type);
 
-  auto getInitializer = [&](VarDecl &declItem) {
-    if (declItem.initializer)
-      return visitExpr(*declItem.initializer);
-    return defaultInitializer(declItem.type);
-  };
-
-  llvm::Value* value = getInitializer(declItem);
+  llvm::Value* value = visitExpr(*declItem.initializer);
   builder.CreateStore(value, instruction);
 
   varAddr[&declItem] = instruction;
@@ -348,16 +324,22 @@ llvm::Value *LLVMCodeGen::getEmptyString() {
 llvm::Value *LLVMCodeGen::visitMemberExpr(MemberExpr &memberExpr) {
   llvm::Value *stackPtr = visitExpr(*memberExpr.thisPtr);
 
+  auto *type = module.getTypeByName(cast<ClassType>(memberExpr.thisPtr->type)->name);
+  llvm::DataLayout dataLayout(&module);
+  const llvm::StructLayout *structLayout = dataLayout.getStructLayout(type);
+  auto offset = structLayout->getElementOffset(memberExpr.fieldDecl->fieldId);
+
+
   auto *thisPtr = builder.CreateLoad(stackPtr);
   auto *gep = builder.CreateGEP(thisPtr,
                            {llvm::ConstantInt::getSigned(
                                llvm::IntegerType::getInt64Ty(module.getContext()),
-                               memberExpr.fieldDecl->offset)});
+                               offset)});
 
-  return builder.CreateBitCast(gep, memberExpr.type->toLLVMType(module)->getPointerTo(0));
+  return builder.CreateBitCast(gep, memberExpr.fieldDecl->type->toLLVMType(module)->getPointerTo(0));
 }
 llvm::Value *LLVMCodeGen::visitNewExpr(NewExpr &newExpr) {
-  auto *fun = module.getFunction(getClassConstructorName(newExpr.getClassType()->name));
+  auto *fun = module.getFunction(getNewOperatorName(newExpr.getClassType()->name));
   return builder.CreateCall(fun);
 }
 llvm::Value *LLVMCodeGen::visitClassCastExpr(ClassCastExpr &classCastExpr) {
