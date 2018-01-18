@@ -324,17 +324,21 @@ llvm::Value *LLVMCodeGen::getEmptyString() {
 llvm::Value *LLVMCodeGen::visitMemberExpr(MemberExpr &memberExpr) {
   llvm::Value *stackPtr = visitExpr(*memberExpr.thisPtr);
 
-  auto *type = module.getTypeByName(cast<ClassType>(memberExpr.thisPtr->type)->name);
-  llvm::DataLayout dataLayout(&module);
-  const llvm::StructLayout *structLayout = dataLayout.getStructLayout(type);
-  auto offset = structLayout->getElementOffset(memberExpr.fieldDecl->fieldId);
+  //auto *type = module.getTypeByName(cast<ClassType>(memberExpr.thisPtr->type)->name);
+ // llvm::DataLayout dataLayout(&module);
+ // const llvm::StructLayout *structLayout = dataLayout.getStructLayout(type);
+  //auto offset = structLayout->getElementOffset(memberExpr.fieldDecl->fieldId);
 
 
   auto *thisPtr = builder.CreateLoad(stackPtr);
-  auto *gep = builder.CreateGEP(thisPtr,
-                           {llvm::ConstantInt::getSigned(
-                               llvm::IntegerType::getInt64Ty(module.getContext()),
-                               offset)});
+  llvm::ArrayRef<llvm::Value*> indices = {
+      llvm::ConstantInt::getSigned(
+          llvm::IntegerType::getInt32Ty(module.getContext()), 0),
+      llvm::ConstantInt::getSigned(
+          llvm::IntegerType::getInt32Ty(module.getContext()),
+                                        memberExpr.fieldDecl->fieldId)
+  };
+  auto *gep = builder.CreateGEP(thisPtr, indices);
 
   return builder.CreateBitCast(gep, memberExpr.fieldDecl->type->toLLVMType(module)->getPointerTo(0));
 }

@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 
 cd ../
-FILES=Tests/correct/*.lat
 
 function runTests {
     FILES=$1
@@ -18,7 +17,8 @@ function runTests {
 
     done
 }
-runTests $FILES
+abc=Tests/correct/*.lat
+runTests "$abc"
 
 
 FILES=Tests/bad/*.lat
