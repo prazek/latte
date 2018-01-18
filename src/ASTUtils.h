@@ -12,6 +12,7 @@ inline Expr* getDefaultInitializer(Type &type) {
       case SimpleType::POD::String:
         return new ConstStringExpr(""); // TODO null
       case SimpleType::POD::Null:
+      case SimpleType::POD::Void:
         llvm_unreachable("no null expr");
     }
   }

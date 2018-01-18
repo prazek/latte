@@ -10,8 +10,8 @@ topDef
     ;
 
 classItem
-    : type_ ID ';'             # FieldDecl
-   //| type_ ID '(' arg? ')' block        # ItemMethodDef
+    : type_ ID ';'                   # FieldDecl
+    //| type_ ID '(' arg? ')' block    # ItemMethodDef
     ;
 
 arg

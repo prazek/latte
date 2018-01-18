@@ -12,6 +12,15 @@ private:
 
   VariableScope<Def*> variableScope;
   std::unordered_map<std::string, ClassDef*> classes;
+
+  struct DeferredClass {
+    std::string className;
+    LatteParser::ClassDefContext *const classContext;
+  };
+
+  std::unordered_map<std::string, std::vector<DeferredClass>> deferredClasses;
+  std::unordered_set<std::string> unfinishedClasses;
+
   enum Passes {
     registerClassesNames,
     registerFunctionPrototypes,
@@ -71,6 +80,8 @@ public:
 private:
   Expr *handleBinaryBooleans(LatteParser::ExprContext *ctx, BinExpr::BinOp);
   Stmt *handleIncrOrDecr(LatteParser::StmtContext *ctx, const std::string &op);
+  ClassDef *parseClassBody(LatteParser::ClassDefContext *ctx,
+                           ClassDef *classDef);
 };
 
 

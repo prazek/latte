@@ -193,6 +193,15 @@ antlrcpp::Any TypeChecker::visitProgram(LatteParser::ProgramContext *ctx) {
   currentPass = Passes::parseClassesWithMethodesPrototypes;
   LatteBaseVisitor::visitProgram(ctx);
 
+  for (auto &[baseClass, derivedClasses] : deferredClasses) {
+    (void)derivedClasses;
+    context.diagnostic.issueError("Class " + baseClass +
+        " derivation graph is cyclic");
+  }
+  // Don't continue parsing with critical error like this.
+  if (!deferredClasses.empty())
+    return {};
+
   currentPass = Passes::parseFuncsAndMethods;
   for (auto *children :ctx->children) {
     Def *def = visit(children);
@@ -211,6 +220,8 @@ antlrcpp::Any TypeChecker::visitClassDef(LatteParser::ClassDefContext *ctx) {
     return {};
 
   const auto &className = ctx->children.at(1)->getText();
+  bool haveBaseClass = ctx->children.at(2)->getText() == ":";
+
   if (currentPass == Passes::registerClassesNames) {
     auto *classType = new ClassType(className);
     auto *classDef = new ClassDef(classType->name, classType);
@@ -220,51 +231,43 @@ antlrcpp::Any TypeChecker::visitClassDef(LatteParser::ClassDefContext *ctx) {
           "Duplicated name for '" + classType->name + "'", ctx);
       return (Def *) nullptr;
     }
+
+
+    if (haveBaseClass) {
+      const std::string &baseClass = ctx->children.at(3)->getText();
+      if (!classes.count(baseClass)) {
+        deferredClasses[baseClass].push_back({className, ctx});
+        unfinishedClasses.insert(className);
+      } else if (ClassDef *def = classes.at(baseClass)) {
+        classDef->baseClass = def;
+      }
+
+    }
+
+
     return (Def*)classDef;
   }
 
   if (currentPass == Passes::parseClassesWithMethodesPrototypes) {
     auto *classDef = classes.at(className);
+    // Wait untill the base class will be ready
+    if (haveBaseClass && classDef->baseClass == nullptr ||
+        unfinishedClasses.count(classDef->baseClass->className)) {
+      unfinishedClasses.insert(className);
+      return (Def *) classDef;
+    }
 
-    unsigned classItemsBeg;
-    if (ctx->children.at(2)->getText() == ":") {
-      classItemsBeg = 5;
-      const std::string &baseClass = ctx->children.at(3)->getText();
-      if (!classes.count(baseClass)) {
-        context.diagnostic.issueError("Unknown class type '" + baseClass + "'",
-                                      ctx);
-      } else if (ClassDef *def = classes.at(baseClass)) {
-        classDef->baseClass = def;
+    parseClassBody(ctx, classDef);
+
+    if (deferredClasses.count(className)) {
+      for (auto & [deferredClassName, classContext] : deferredClasses.at(className)) {
+        visitClassDef(classContext);
+        unfinishedClasses.erase(deferredClassName);
       }
-
-    } else {
-      classItemsBeg = 3;
+      deferredClasses.erase(className);
     }
 
-    std::vector<FieldDecl *> fields;
-    auto isDuplicated = [&fields](FieldDecl *newDecl) {
-      for (auto *field : fields)
-        if (field->name == newDecl->name)
-          return true;
-      return false;
-    };
-
-    int currentID = 0;
-    for (unsigned i = classItemsBeg; i < ctx->children.size() - 1; i++) {
-      FieldDecl *decl = visit(ctx->children.at(i));
-      decl->fieldId = currentID++;
-      if (isDuplicated(decl)) {
-        context.diagnostic.issueError(
-            "Duplicated field name '" + decl->name + "'",
-            ctx);
-      } else
-        fields.push_back(decl);
-
-    }
-
-    classDef->fieldDecls = std::move(fields);
-
-    return (Def *) classDef;
+    return (Def*)classDef;
   }
 
   if (currentPass == Passes::parseFuncsAndMethods) {
@@ -275,6 +278,42 @@ antlrcpp::Any TypeChecker::visitClassDef(LatteParser::ClassDefContext *ctx) {
   llvm_unreachable("Should not get here");
 }
 
+static std::vector<FieldDecl *> baseFields(ClassDef *classDef) {
+  if (!classDef->baseClass)
+    return {};
+  return classDef->baseClass->fieldDecls;
+}
+
+ClassDef *TypeChecker::parseClassBody(LatteParser::ClassDefContext *ctx,
+                                      ClassDef *classDef) {
+
+  std::vector<FieldDecl *> fields = baseFields(classDef);
+  auto isDuplicated = [&fields](FieldDecl *newDecl) {
+      for (auto *field : fields)
+        if (field->name == newDecl->name)
+          return true;
+      return false;
+    };
+
+  bool haveBaseClass = ctx->children.at(2)->getText() == ":";
+  auto classItemsBeg = haveBaseClass ? 5 : 3;
+
+  int currentID = fields.size();
+  for (unsigned i = classItemsBeg; i < ctx->children.size() - 1; i++) {
+      FieldDecl *decl = visit(ctx->children.at(i));
+      decl->fieldId = currentID++;
+      if (isDuplicated(decl))
+        context.diagnostic.issueError(
+            "Duplicated field name '" + decl->name + "'",
+            ctx);
+      else
+        fields.push_back(decl);
+    }
+
+  classDef->fieldDecls = move(fields);
+
+  return classDef;
+}
 
 antlrcpp::Any TypeChecker::visitFuncDef(LatteParser::FuncDefContext *ctx) {
   if (currentPass == Passes::registerClassesNames
@@ -568,6 +607,8 @@ antlrcpp::Any TypeChecker::visitEFunCall(LatteParser::EFunCallContext *ctx) {
 
 
   for (unsigned i = 0; i < argumentExprs.size(); i++) {
+    if (argumentExprs.at(i) == nullptr)
+      return (Expr*)callExpr;
     if (*argumentExprs.at(i)->type == *funDef->getFunType()->argumentTypes.at(i))
       continue;
     context.diagnostic.issueError("Function '" + funDef->name + "' expects type '"

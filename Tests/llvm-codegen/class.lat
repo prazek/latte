@@ -29,8 +29,28 @@ int main() {
         printInt(2137);
     }
 
+    foo2();
     return 0;
 }
+
+
+class Base {
+    int p;
+}
+
+class Derived : Base {
+    int p2;
+}
+
+void foo2() {
+    Derived d = new Derived;
+
+    d.p = 1;
+    d.p2 = 2;
+    printInt(d.p);
+    printInt(d.p2);
+}
+
 
 
 

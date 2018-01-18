@@ -1,0 +1,20 @@
+
+class A : B {
+    int a;
+}
+
+class C : A {
+
+}
+
+class B : C {
+
+}
+
+class D : C {
+
+}
+
+void foo (D d) {
+    d.a;
+}
