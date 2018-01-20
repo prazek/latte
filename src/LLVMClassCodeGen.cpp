@@ -7,7 +7,6 @@ FunctionDef *createConstructor(ClassDef &def) {
   funType->returnType = def.type;
   funType->argumentTypes.push_back(def.type);
 
-
   auto *funDef = new FunctionDef(funType, getClassConstructorName(def.className));
   auto *arg = new VarDecl("arg", def.type, nullptr);
   funDef->arguments.push_back(arg);
