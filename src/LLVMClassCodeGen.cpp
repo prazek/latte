@@ -12,6 +12,13 @@ FunctionDef *createConstructor(ClassDef &def) {
   auto *arg = new VarDecl("arg", def.type, nullptr);
   funDef->arguments.push_back(arg);
   for (auto* fieldDecl : def.fieldDecls) {
+    if (isa<VptrType>(fieldDecl->type)) {
+
+      funDef->block.stmts.push_back(new AssignStmt(new MemberExpr(new VarExpr(arg), fieldDecl),
+                                                  new VTableExpr(&def)));
+      continue;
+    }
+
     funDef->block.stmts.push_back(new AssignStmt(new MemberExpr(new VarExpr(arg), fieldDecl),
                                                  getDefaultInitializer(*fieldDecl->type)
     ));
@@ -20,6 +27,7 @@ FunctionDef *createConstructor(ClassDef &def) {
   funDef->block.stmts.push_back(new ReturnStmt(getAsRValue(new VarExpr(arg))));
   return funDef;
 }
+
 
 llvm::Function *emitNewOperator(llvm::Module &module, ClassDef &def) {
   auto *funType = llvm::FunctionType::get(def.type->toLLVMType(module), false);

@@ -20,7 +20,7 @@ private:
 
   std::unordered_map<std::string, std::vector<DeferredClass>> deferredClasses;
   std::unordered_set<std::string> unfinishedClasses;
-
+  std::unordered_map<std::string, VariableScope<Def*>::Scope> classesScope;
   enum Passes {
     registerClassesNames,
     registerFunctionPrototypes,
@@ -28,7 +28,9 @@ private:
     parseFuncsAndMethods
   };
   Passes currentPass;
-  Type *currentReturnType;
+
+  Type *currentReturnType = nullptr;
+
 public:
 
   AST ast;
@@ -76,12 +78,23 @@ public:
   antlrcpp::Any visitENewExpr(LatteParser::ENewExprContext *ctx) override;
   antlrcpp::Any visitEClassCast(LatteParser::EClassCastContext *ctx) override;
   antlrcpp::Any visitENull(LatteParser::ENullContext *ctx) override;
+  antlrcpp::Any visitMethodDef(LatteParser::MethodDefContext *ctx) override;
 
 private:
   Expr *handleBinaryBooleans(LatteParser::ExprContext *ctx, BinExpr::BinOp);
   Stmt *handleIncrOrDecr(LatteParser::StmtContext *ctx, const std::string &op);
   ClassDef *parseClassBody(LatteParser::ClassDefContext *ctx,
                            ClassDef *classDef);
+
+  void handleMethodDecl(FunctionDef *methodDecl,
+                        const std::vector<FieldDecl*> &fields,
+                        std::vector<FunctionDef*> &methods,
+                        LatteParser::ClassDefContext *ctx,
+                        ClassDef *classDef);
+
+  std::vector<Expr*> parseCallArguments(LatteParser::EFunCallContext *ctx, FunctionDef *funDef);
+  FunctionDef* parseFunctionProto(antlr4::ParserRuleContext *ctx,
+                                  const std::string &funName);
 };
 
 

@@ -12,26 +12,36 @@ struct VarDecl;
 
 struct AST {
   std::vector<Def*> definitions;
+
+  std::string dump() const;
 };
 
 struct Def {
   Def(Type *type) : type(type) {}
 
   Type *type;
-  virtual std::string dump() const = 0;
+  virtual std::string dump(int ident = 0) const = 0;
+};
+
+
+struct Stmt {
+  virtual std::string dump(int ident) const = 0;
 };
 
 struct Block {
   std::vector<Stmt*> stmts;
 
-  std::string dump() const {
-    return "Block TODO";
-  }
+  std::string dump(int ident) const;
 };
 
 struct FunctionDef final : Def {
   FunctionDef(FunctionType *type, std::string name)
       : Def(type), name(std::move(name)) {}
+
+  // Additional data for methods. FIXME: get them out of here.
+  VarDecl *thisPtr;
+  unsigned methodID;
+
 
   std::vector<VarDecl*> arguments;
   std::string name;
@@ -41,21 +51,7 @@ struct FunctionDef final : Def {
     return cast<FunctionType>(type);
   }
 
-  std::string dump() const override {
-    return "FunctionDef";
-  }
-};
-
-struct VarDecl final : Def {
-  VarDecl(std::string name, Type* type, Expr *initializer)
-      : Def(type), name(std::move(name)), initializer(initializer) {}
-
-  std::string name;
-  Expr* initializer;
-
-  std::string dump() const override {
-    return "VarDecl: " + name;
-  }
+  std::string dump(int ident) const override;
 };
 
 struct FieldDecl final : Def {
@@ -65,10 +61,20 @@ struct FieldDecl final : Def {
   std::string name;
   unsigned fieldId;
 
-  std::string dump() const override {
-    return "FieldDecl:";
-  }
+  std::string dump(int ident) const override;
 };
+
+
+struct VarDecl final : Def {
+  VarDecl(std::string name, Type* type, Expr *initializer)
+      : Def(type), name(std::move(name)), initializer(initializer) {}
+
+  std::string name;
+  Expr* initializer;
+
+  std::string dump(int ident) const override;
+};
+
 
 struct ClassDef final : Def {
   ClassDef(std::string className, ClassType *classType)
@@ -82,41 +88,25 @@ struct ClassDef final : Def {
   std::string className;
   // FieldDecl?
   std::vector<FieldDecl*> fieldDecls;
-  //std::vector<FunctionDef*> methodDecls;
+  std::vector<FunctionDef*> methodDecls;
 
 
-  FieldDecl *getFieldWithName(const std::string& name) {
-    for (auto *fieldDecl : fieldDecls)
-      if (fieldDecl->name == name)
-        return fieldDecl;
-    return nullptr;
-  }
+  FieldDecl *getFieldWithName(const std::string& name) const;
 
-  ClassType *getClassType() const {
-    return cast<ClassType>(type);
-  }
+  FunctionDef *getFunctionWithName(const std::string &name) const;
 
-  std::string dump() const override {
-    return "ClassDef";
-  }
+
+  std::string dump(int ident) const override;
 };
 
-
-struct Stmt {
-  virtual std::string dump() const = 0;
-};
 
 struct EmptyStmt : public Stmt {
-  std::string dump() const override {
-    return "EmptyStmt";
-  }
+  std::string dump(int ident) const override;
 };
 
 struct BlockStmt : public Stmt {
   Block block;
-  std::string dump() const override {
-    return "BlockStmt" + block.dump();
-  }
+  std::string dump(int ident) const override;
 };
 
 
@@ -125,9 +115,7 @@ struct DeclStmt : public Stmt {
   Type *type;
   std::vector<VarDecl*> decls;
 
-  std::string dump() const override {
-    return "DeclStmt";
-  }
+  std::string dump(int ident) const override;
 };
 
 
@@ -139,9 +127,7 @@ struct AssignStmt : Stmt {
 
   Expr *lhs;
   Expr *initializer;
-  std::string dump() const override {
-    return "AssignStmt";
-  }
+  std::string dump(int ident) const override;
 };
 
 struct IncrStmt : Stmt {
@@ -150,9 +136,7 @@ struct IncrStmt : Stmt {
 
 
   Expr *lhs;
-  std::string dump() const override {
-    return "IncrStmt:";
-  }
+  std::string dump(int ident) const override;
 };
 
 struct DecrStmt : Stmt {
@@ -161,9 +145,7 @@ struct DecrStmt : Stmt {
 
   Expr *expr;
 
-  std::string dump() const override {
-    return "IncrStmt:";
-  }
+  std::string dump(int ident) const override;
 };
 
 
@@ -171,18 +153,14 @@ struct ReturnStmt : Stmt {
   ReturnStmt(Expr *expr) : expr(expr) {}
   Expr *expr;
 
-  std::string dump() const override {
-    return "ReturnStmt";
-  }
+  std::string dump(int ident) const override;
 };
 
 // This stmt is inserted at the end of non-void function that does not have a
 // return, meaning that getting there is unreachable.
 struct UnreachableStmt : Stmt {
 
-  std::string dump() const override {
-    return "UnreachableStmt";
-  }
+  std::string dump(int ident) const override;
 };
 
 struct IfStmt : Stmt {
@@ -193,9 +171,7 @@ struct IfStmt : Stmt {
   Stmt *stmt;
   Stmt *elseStmt;
 
-  std::string dump() const override {
-    return "IfStmt";
-  }
+  std::string dump(int ident) const override;
 };
 
 struct WhileStmt : Stmt {
@@ -205,25 +181,21 @@ struct WhileStmt : Stmt {
   Expr *condition;
   Stmt *stmt;
 
-  std::string dump() const override {
-    return "WhileStmt";
-  }
+  std::string dump(int ident) const override;
 };
 
 struct ExprStmt : Stmt {
   ExprStmt(Expr *expr) : expr(expr) {}
   Expr *expr;
 
-  std::string dump() const override {
-    return "ExprStmt";
-  }
+  std::string dump(int ident) const override;
 };
 
 struct Expr {
   Expr(Type *type) : type(type) {}
   Type *type;
 
-  virtual std::string dump() const = 0;
+  virtual std::string dump(int ident) const = 0;
 };
 
 struct RValueImplicitCast : Expr {
@@ -232,9 +204,7 @@ struct RValueImplicitCast : Expr {
 
   Expr *expr;
 
-  std::string dump() const override {
-    return "RValueImplicitCast:";
-  }
+  std::string dump(int ident) const override;
 };
 
 struct UnaryExpr : Expr {
@@ -248,9 +218,7 @@ struct UnaryExpr : Expr {
 
   UnOp unOp;
   Expr *expr;
-  std::string dump() const override {
-    return "UnaryExpr:";
-  }
+  std::string dump(int ident) const override;
 };
 
 struct BinExpr : Expr {
@@ -284,9 +252,7 @@ struct BinExpr : Expr {
   BinOp binOp;
   Expr *lhs, *rhs;
 
-  std::string dump() const override {
-    return "BinExpr:";
-  }
+  std::string dump(int ident) const override;
 
 };
 
@@ -297,9 +263,7 @@ struct NewExpr : Expr {
   ClassType *getClassType() const {
     return cast<ClassType>(type);
   }
-  std::string dump() const override {
-    return "NewExpr:";
-  }
+  std::string dump(int ident) const override;
 };
 
 struct ClassCastExpr : Expr {
@@ -308,9 +272,7 @@ struct ClassCastExpr : Expr {
 
   Expr *casted;
 
-  std::string dump() const override {
-    return "ClassCastExpr:";
-  }
+  std::string dump(int ident) const override;
 };
 
 struct MemberExpr : Expr {
@@ -319,54 +281,54 @@ struct MemberExpr : Expr {
 
   Expr *thisPtr;
   FieldDecl *fieldDecl;
-  std::string dump() const override {
-    return "MemberExpr:";
-  }
+  std::string dump(int ident) const override;
 };
-
-/*
-struct MemberFunExpr : Expr {
-  MemberFunExpr(Expr *thisPtr, ClassDef *classDef, FunctionDef *funDef)
-      : Expr()
-};
-*/
 
 struct VarExpr : Expr {
-  VarExpr(VarDecl *decl) : Expr(decl->type), decl(decl){}
+  VarExpr(VarDecl *decl) : Expr(decl->type), decl(decl) {}
   VarDecl *decl;
 
-  std::string dump() const override {
-    return "VarExpr:" + decl->name;
-  }
+  std::string dump(int ident) const override;
 };
 
+struct MethodExpr : Expr {
+  MethodExpr(Expr *thisPtr, FunctionDef *funDef)
+      : Expr(funDef->type), thisPtr(thisPtr), funDef(funDef) {}
+
+  Expr *thisPtr;
+  FunctionDef *funDef;
+
+  std::string dump(int ident) const override;
+};
 
 
 struct FunExpr : Expr {
   FunExpr(FunctionDef *def) : Expr(def->type), def(def) {}
 
   FunctionDef *def;
-  std::string dump() const override {
-    return "FunExpr:";
-  }
+  std::string dump(int ident) const override;
 };
 
 struct ConstIntExpr : Expr {
   ConstIntExpr(int32_t value) : Expr(SimpleType::Int()), value(value) {}
   int32_t value;
 
-  std::string dump() const override {
-    return "ConstIntExpr:" + value;
-  }
+  std::string dump(int ident) const override;
 };
 
 struct BooleanExpr : Expr {
   BooleanExpr(bool value) : Expr(SimpleType::Bool()), value(value) {}
   bool value;
 
-  std::string dump() const override {
-    return "BooleanExpr:" + value;
-  }
+  std::string dump(int ident) const override;
+};
+
+struct VTableExpr : Expr {
+  VTableExpr(ClassDef *classDef)
+      : Expr(new VptrType), classDef(classDef) {}
+
+  ClassDef *classDef;
+  std::string dump(int ident) const override;
 };
 
 struct CallExpr : Expr {
@@ -377,9 +339,19 @@ struct CallExpr : Expr {
   std::vector<Expr*> arguments;
   Expr *callee;
 
-  std::string dump() const override {
-    return "CallExpr";
-  }
+  std::string dump(int ident) const override;
+};
+
+struct MemberCallExpr : Expr {
+  MemberCallExpr(Expr *thisPtr, Expr *callee, Type *returnType)
+    : Expr(returnType), thisPtr(thisPtr), callee(callee) {}
+
+  Expr *thisPtr;
+  Expr *callee;
+  std::vector<Expr*> arguments;
+
+
+  std::string dump(int ident) const override;
 };
 
 struct ConstStringExpr : Expr {
@@ -388,17 +360,13 @@ struct ConstStringExpr : Expr {
 
   std::string string;
 
-  std::string dump() const override {
-    return "ConstStringExpr:";
-  }
+  std::string dump(int ident) const override;
 };
 
 struct NullExpr : Expr {
   NullExpr() : Expr(SimpleType::Null()) {}
 
-  std::string dump() const override {
-    return "NullExpr:";
-  }
+  std::string dump(int ident) const override;
 };
 
 struct ParenExpr : Expr {
@@ -406,9 +374,7 @@ struct ParenExpr : Expr {
 
   Expr *expr;
 
-  std::string dump() const override {
-    return "ParenExpr:";
-  }
+  std::string dump(int ident) const override;
 };
 
 

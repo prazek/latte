@@ -6,12 +6,12 @@ program
 
 topDef
     : type_ ID '(' arg? ')' block             #FuncDef
-    | 'class' ID (':' ID)? '{' classItem* '}' #ClassDef
+    | 'class' ID ('extends' ID)? '{' classItem* '}' #ClassDef
     ;
 
 classItem
     : type_ ID ';'                   # FieldDecl
-    //| type_ ID '(' arg? ')' block    # ItemMethodDef
+    | type_ ID '(' arg? ')' block    # MethodDef
     ;
 
 arg
@@ -52,13 +52,13 @@ item
 
 expr
     : expr '(' ( expr ( ',' expr )* )? ')'  # EFunCall
+    | expr '.' ID                           # EMemberExpr
     | ('-'|'!') expr                        # EUnOp
     | expr mulOp expr                       # EMulOp
     | expr addOp expr                       # EAddOp
     | expr relOp expr                       # ERelOp
     | <assoc=right> expr '&&' expr          # EAnd
     | <assoc=right> expr '||' expr          # EOr
-    | expr '.' ID                           # EMemberExpr
     | 'new' type_                           # ENewExpr
     | ID                                    # EId
     | INT                                   # EInt

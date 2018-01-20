@@ -128,3 +128,12 @@ ReturnInfo ControlFlowAnalyzer::visitClassCastExpr(ClassCastExpr &) {
 ReturnInfo ControlFlowAnalyzer::visitNullExpr(NullExpr &) {
   return ReturnInfo::OtherExpr;
 }
+ReturnInfo ControlFlowAnalyzer::visitMemberCallExpr(MemberCallExpr &) {
+  return ReturnInfo::OtherExpr;
+}
+ReturnInfo ControlFlowAnalyzer::visitVTableExpr(VTableExpr &) {
+  return ReturnInfo::OtherExpr;
+}
+ReturnInfo ControlFlowAnalyzer::visitMethodExpr(MethodExpr &) {
+  return ReturnInfo::OtherExpr;
+}

@@ -36,4 +36,7 @@ do
 
 done
 
-runTests Tests/extensions/struct/*.lat
+runTests "Tests/extensions/struct/*.lat"
+runTests "Tests/extensions/objects1/*.lat"
+
+runTests "Tests/extensions/objects2/*.lat"

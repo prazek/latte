@@ -37,7 +37,12 @@ llvm::Value *LLVMCodeGen::visitFunctionDef(FunctionDef &functionDef) {
   return {};
 }
 
-llvm::Value *LLVMCodeGen::visitClassDef(ClassDef &/*classDef*/) {
+llvm::Value *LLVMCodeGen::visitClassDef(ClassDef &classDef) {
+  for (auto *methodDef : classDef.methodDecls) {
+
+    visitFunctionDef(*methodDef);
+
+  }
   return nullptr;
 }
 
@@ -324,12 +329,6 @@ llvm::Value *LLVMCodeGen::getEmptyString() {
 llvm::Value *LLVMCodeGen::visitMemberExpr(MemberExpr &memberExpr) {
   llvm::Value *stackPtr = visitExpr(*memberExpr.thisPtr);
 
-  //auto *type = module.getTypeByName(cast<ClassType>(memberExpr.thisPtr->type)->name);
- // llvm::DataLayout dataLayout(&module);
- // const llvm::StructLayout *structLayout = dataLayout.getStructLayout(type);
-  //auto offset = structLayout->getElementOffset(memberExpr.fieldDecl->fieldId);
-
-
   auto *thisPtr = builder.CreateLoad(stackPtr);
   llvm::ArrayRef<llvm::Value*> indices = {
       llvm::ConstantInt::getSigned(
@@ -353,6 +352,63 @@ llvm::Value *LLVMCodeGen::visitClassCastExpr(ClassCastExpr &classCastExpr) {
 }
 llvm::Value *LLVMCodeGen::visitNullExpr(NullExpr &) {
   return llvm::ConstantPointerNull::get(llvm::IntegerType::getInt8PtrTy(module.getContext()));
+}
+llvm::Value *LLVMCodeGen::visitMemberCallExpr(MemberCallExpr &memberCallExpr) {
+
+  llvm::Value* thisPtr = visitExpr(*memberCallExpr.thisPtr);
+  llvm::SmallVector<llvm::Value*, 4> args;
+  args.reserve(memberCallExpr.arguments.size() + 1);
+  args.push_back(thisPtr);
+  for (Expr *arg : memberCallExpr.arguments) {
+    args.push_back(visitExpr(*arg));
+  }
+
+  llvm::Value *callee = visitExpr(*memberCallExpr.callee);
+  return builder.CreateCall(callee, args);
+}
+
+llvm::Value *LLVMCodeGen::visitVTableExpr(VTableExpr &vTableExpr) {
+  auto *vtableType = llvm::ArrayType::get(llvm::Type::getInt8Ty(module.getContext())->getPointerTo(),
+                                          vTableExpr.classDef->methodDecls.size());
+
+  llvm::SmallVector<llvm::Constant*, 4> methods;
+  for (FunctionDef *def  : vTableExpr.classDef->methodDecls) {
+    auto *vfun = module.getFunction(def->name);
+    methods.push_back(llvm::ConstantExpr::getBitCast(vfun, llvm::IntegerType::getInt8PtrTy(module.getContext())));
+  }
+
+  auto *initializer = llvm::ConstantArray::get(vtableType, methods);
+  auto *vtable = new llvm::GlobalVariable(module, vtableType, true,
+                                          llvm::GlobalValue::PrivateLinkage, initializer,
+                                          vTableExpr.classDef->className + "$vtable");
+
+  return builder.CreateBitCast(vtable,
+                               llvm::PointerType::getInt8PtrTy(module.getContext())->getPointerTo());
+
+}
+llvm::Value *LLVMCodeGen::visitMethodExpr(MethodExpr &methodExpr) {
+  auto *thisPtr = visitExpr(*methodExpr.thisPtr);
+
+  llvm::ArrayRef<llvm::Value*> vptrIndices = {
+      llvm::ConstantInt::getSigned(
+          llvm::IntegerType::getInt32Ty(module.getContext()), 0),
+      llvm::ConstantInt::getSigned(
+          llvm::IntegerType::getInt32Ty(module.getContext()),
+          0)
+  };
+
+
+  auto *gep = builder.CreateGEP(thisPtr, vptrIndices);
+  auto *vtable = builder.CreateLoad(gep, "vtable");
+  llvm::ArrayRef<llvm::Value*> vtableIndices = {
+      llvm::ConstantInt::getSigned(
+          llvm::IntegerType::getInt64Ty(module.getContext()),
+          methodExpr.funDef->methodID)
+  };
+
+  auto *gepVtable = builder.CreateGEP(vtable, vtableIndices);
+  return builder.CreateBitCast(builder.CreateLoad(gepVtable, "vfun"),
+                               methodExpr.funDef->type->toLLVMType(module)->getPointerTo());
 }
 
 

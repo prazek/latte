@@ -156,6 +156,21 @@ public:
 
 };
 
+class VptrType final :public Type {
+
+  bool operator==(const Type &other) const override {
+    return isa<VptrType>(other);
+  }
+
+  llvm::Type *toLLVMType(llvm::Module &module) const override {
+    return llvm::IntegerType::getInt8PtrTy(module.getContext())->getPointerTo();
+  }
+
+  std::string toString() const override {
+    return "VptrType";
+  }
+  ~VptrType() override = default;
+};
 
 class FunctionType final : public Type {
 public:

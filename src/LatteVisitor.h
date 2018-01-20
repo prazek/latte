@@ -27,6 +27,8 @@ public:
 
     virtual antlrcpp::Any visitFieldDecl(LatteParser::FieldDeclContext *context) = 0;
 
+    virtual antlrcpp::Any visitMethodDef(LatteParser::MethodDefContext *context) = 0;
+
     virtual antlrcpp::Any visitArg(LatteParser::ArgContext *context) = 0;
 
     virtual antlrcpp::Any visitBlock(LatteParser::BlockContext *context) = 0;

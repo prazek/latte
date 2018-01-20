@@ -1,17 +1,17 @@
 
-class A : B {
+class A extends B {
     int a;
 }
 
-class C : A {
+class C extends A {
 
 }
 
-class B : C {
+class B extends C {
 
 }
 
-class D : C {
+class D extends C {
 
 }
 

@@ -5,6 +5,7 @@
 #include "BuiltinFunctions.h"
 #include "AST.h"
 #include "ASTUtils.h"
+#include "LLVMClassCodeGen.h"
 #include <memory>
 
 antlrcpp::Any TypeChecker::visitBool(LatteParser::BoolContext *) {
@@ -194,7 +195,7 @@ antlrcpp::Any TypeChecker::visitProgram(LatteParser::ProgramContext *ctx) {
   LatteBaseVisitor::visitProgram(ctx);
 
   for (auto &[baseClass, derivedClasses] : deferredClasses) {
-    (void)derivedClasses;
+    (void)derivedClasses; // Unused
     context.diagnostic.issueError("Class " + baseClass +
         " derivation graph is cyclic");
   }
@@ -220,7 +221,7 @@ antlrcpp::Any TypeChecker::visitClassDef(LatteParser::ClassDefContext *ctx) {
     return {};
 
   const auto &className = ctx->children.at(1)->getText();
-  bool haveBaseClass = ctx->children.at(2)->getText() == ":";
+  bool haveBaseClass = ctx->children.at(2)->getText() == "extends";
 
   if (currentPass == Passes::registerClassesNames) {
     auto *classType = new ClassType(className);
@@ -232,7 +233,6 @@ antlrcpp::Any TypeChecker::visitClassDef(LatteParser::ClassDefContext *ctx) {
       return (Def *) nullptr;
     }
 
-
     if (haveBaseClass) {
       const std::string &baseClass = ctx->children.at(3)->getText();
       if (!classes.count(baseClass)) {
@@ -241,18 +241,17 @@ antlrcpp::Any TypeChecker::visitClassDef(LatteParser::ClassDefContext *ctx) {
       } else if (ClassDef *def = classes.at(baseClass)) {
         classDef->baseClass = def;
       }
-
     }
-
 
     return (Def*)classDef;
   }
 
   if (currentPass == Passes::parseClassesWithMethodesPrototypes) {
+    variableScope.openNewScope();
     auto *classDef = classes.at(className);
     // Wait untill the base class will be ready
-    if (haveBaseClass && classDef->baseClass == nullptr ||
-        unfinishedClasses.count(classDef->baseClass->className)) {
+    if (haveBaseClass && (classDef->baseClass == nullptr ||
+        unfinishedClasses.count(classDef->baseClass->className))) {
       unfinishedClasses.insert(className);
       return (Def *) classDef;
     }
@@ -267,55 +266,199 @@ antlrcpp::Any TypeChecker::visitClassDef(LatteParser::ClassDefContext *ctx) {
       deferredClasses.erase(className);
     }
 
+    auto scope = variableScope.closeScope();
+    classesScope[className] = std::move(scope);
+
     return (Def*)classDef;
   }
 
   if (currentPass == Passes::parseFuncsAndMethods) {
-    // TODO parse methods
-    return (Def*) classes.at(className);
+    variableScope.openNewScope(std::move(classesScope.at(className)));
+    classesScope.erase(className);
+
+    auto *classDef = classes.at(className);
+    parseClassBody(ctx, classDef);
+
+    variableScope.closeScope();
+    return (Def*) classDef;
   }
 
   llvm_unreachable("Should not get here");
 }
 
 static std::vector<FieldDecl *> baseFields(ClassDef *classDef) {
+  if (!classDef->baseClass) {
+    return {};
+  }
+  return classDef->baseClass->fieldDecls;
+}
+
+static std::vector<FunctionDef*> baseMethods(ClassDef *classDef) {
   if (!classDef->baseClass)
     return {};
-  return classDef->baseClass->fieldDecls;
+  return classDef->baseClass->methodDecls;
 }
 
 ClassDef *TypeChecker::parseClassBody(LatteParser::ClassDefContext *ctx,
                                       ClassDef *classDef) {
 
-  std::vector<FieldDecl *> fields = baseFields(classDef);
-  auto isDuplicated = [&fields](FieldDecl *newDecl) {
-      for (auto *field : fields)
-        if (field->name == newDecl->name)
+  bool haveBaseClass = ctx->children.at(2)->getText() == "extends";
+  auto classItemsBeg = haveBaseClass ? 5 : 3;
+
+  if (currentPass == Passes::parseClassesWithMethodesPrototypes) {
+    auto isDuplicatedMember = [](auto *newDecl, const auto &members) {
+      for (auto *member : members)
+        if (member->name == newDecl->name)
           return true;
       return false;
     };
 
-  bool haveBaseClass = ctx->children.at(2)->getText() == ":";
-  auto classItemsBeg = haveBaseClass ? 5 : 3;
+    std::vector<FieldDecl *> fields = baseFields(classDef);
+    if (fields.empty()) {
+      fields.push_back(new FieldDecl("$vptr", new VptrType));
+      // TODO add ref count
+    }
+    std::vector<FunctionDef *> methods = baseMethods(classDef);
 
-  int currentID = fields.size();
-  for (unsigned i = classItemsBeg; i < ctx->children.size() - 1; i++) {
-      FieldDecl *decl = visit(ctx->children.at(i));
-      decl->fieldId = currentID++;
-      if (isDuplicated(decl))
-        context.diagnostic.issueError(
-            "Duplicated field name '" + decl->name + "'",
-            ctx);
-      else
-        fields.push_back(decl);
+
+    int currentID = fields.size();
+    int methodID = methods.size();
+    for (unsigned i = classItemsBeg; i < ctx->children.size() - 1; i++) {
+      Def *decl = visit(ctx->children.at(i));
+      if (auto *fieldDecl = dyn_cast<FieldDecl>(decl)) {
+
+        fieldDecl->fieldId = currentID++;
+        if (isDuplicatedMember(fieldDecl, fields))
+          context.diagnostic.issueError(
+              "Duplicated field name '" + fieldDecl->name + "'",
+              ctx);
+        else if (isDuplicatedMember(fieldDecl, methods))
+          context.diagnostic.issueError(
+              "Field '" + fieldDecl->name + "' has the same name as method",
+              ctx);
+        else
+          fields.push_back(fieldDecl);
+      }
+
+      if (auto *methodDecl = dyn_cast<FunctionDef>(decl)) {
+        handleMethodDecl(methodDecl, fields, methods, ctx, classDef);
+        methodDecl->methodID = methodID++;
+      }
     }
 
-  classDef->fieldDecls = move(fields);
 
+    auto addToScope = [this](const auto &members) {
+      for (auto *member : members) {
+        auto b = this->variableScope.addName(member->name, member);
+        assert(b); (void)b;
+      }
+    };
+
+    addToScope(fields);
+    addToScope(methods);
+
+    classDef->fieldDecls = move(fields);
+    classDef->methodDecls = std::move(methods);
+
+    return classDef;
+  }
+
+  for (unsigned i = classItemsBeg; i < ctx->children.size() - 1; i++) {
+    visit(ctx->children.at(i));
+  }
   return classDef;
 }
 
+void TypeChecker::handleMethodDecl(FunctionDef *methodDecl,
+                                   const std::vector<FieldDecl*> &fields,
+                                   std::vector<FunctionDef*> &methods,
+                                   LatteParser::ClassDefContext *ctx,
+                                   ClassDef *classDef) {
+  assert(currentPass == Passes::parseClassesWithMethodesPrototypes);
+  auto findBaseMember = [](auto *memberDecl, const auto &members) {
+    for (auto *member : members)
+      if (memberDecl->name == member->name)
+        return member;
+    return (decltype(members.back())) nullptr;
+  };
+
+  auto overrideMethod = [](FunctionDef *overrideDecl, auto &methods) {
+    for (FunctionDef *&member : methods)
+      if (member->name == overrideDecl->name) {
+        member = overrideDecl;
+        return;
+      }
+    assert(false && "Should find method");
+  };
+
+  methodDecl->thisPtr = new VarDecl("$this", classDef->type ,nullptr);
+  bool added = variableScope.addName("$this", methodDecl->thisPtr);
+  // TODO
+  //assert(added); (void)added;
+
+  // TODO gdzie ja parsuje argumenty?
+  if (findBaseMember(methodDecl, fields) != nullptr) {
+    context.diagnostic.issueError(
+        "Method '" + methodDecl->name + "' has the same name as field",
+        ctx);
+    return;
+  }
+
+  if (FunctionDef *baseMethod = findBaseMember(methodDecl, methods)) {
+    if (*baseMethod->type != *methodDecl->type) {
+      context.diagnostic.issueError(
+          "Can't override method '" + methodDecl->name
+              + "' because of different signature",
+          ctx);
+      return;
+    }
+    overrideMethod(methodDecl, methods);
+    return;
+  }
+
+  methods.push_back(methodDecl);
+  return;
+}
+
+
+
+antlrcpp::Any TypeChecker::visitFieldDecl(LatteParser::FieldDeclContext *ctx) {
+  assert(ctx->children.size() == 3);
+
+  Type *type = visit(ctx->children.front());
+  const std::string &name = ctx->children.at(1)->getText();
+
+  return (Def*)new FieldDecl(name, type);
+}
+
+antlrcpp::Any TypeChecker::visitMethodDef(LatteParser::MethodDefContext *ctx) {
+  assert(ctx->children.size() >= 5);
+  std::string funName = ctx->children.at(1)->getText();
+  if (currentPass == Passes::parseClassesWithMethodesPrototypes) {
+    return (Def *) parseFunctionProto(ctx, funName);
+  }
+
+  assert(currentPass == Passes::parseFuncsAndMethods);
+
+  auto *funDef = cast<FunctionDef>(variableScope.findNameInCurrentScope(funName));
+  assert(currentReturnType == nullptr);
+  currentReturnType = funDef->getFunType()->returnType;
+  variableScope.openNewScope();
+
+  for (VarDecl * decl : funDef->arguments) {
+    auto b = variableScope.addName(decl->name, decl);
+    assert(b); (void)b;
+  }
+  funDef->block = visit(ctx->children.back());
+
+  variableScope.closeScope();
+  currentReturnType = nullptr;
+  return (Def*)funDef;
+}
+
+
 antlrcpp::Any TypeChecker::visitFuncDef(LatteParser::FuncDefContext *ctx) {
+  assert(ctx->children.size() >= 5);
   if (currentPass == Passes::registerClassesNames
       || currentPass == Passes::parseClassesWithMethodesPrototypes)
     return {};
@@ -323,28 +466,15 @@ antlrcpp::Any TypeChecker::visitFuncDef(LatteParser::FuncDefContext *ctx) {
   std::string funName = ctx->children.at(1)->getText();
 
   if (currentPass == Passes::registerFunctionPrototypes) {
-    auto *funDef = new FunctionDef(nullptr, funName);
-    auto * funType = new FunctionType;
-    funType->returnType = visit(ctx->children.front());
-
+    auto *funDef = parseFunctionProto(ctx, funName);
     if (!variableScope.addName(funName, funDef))
       context.diagnostic.issueError("redefinition of function '" + funName + "'", ctx);
 
-    if (ctx->children.size() == 6) {
-      funDef->arguments =
-          visit(ctx->children.at(3)).as<std::vector<VarDecl*>>();
-      for (VarDecl *argDecl : funDef->arguments) {
-        funType->argumentTypes.push_back(argDecl->type);
-      }
-    }
-    else {
-      assert(ctx->children.size() == 5);
-    }
-    funDef->type = funType;
     return {};
   }
 
   auto *funDef = cast<FunctionDef>(variableScope.findNameInCurrentScope(funName));
+  assert(currentReturnType == nullptr);
   currentReturnType = funDef->getFunType()->returnType;
 
   variableScope.openNewScope();
@@ -357,7 +487,28 @@ antlrcpp::Any TypeChecker::visitFuncDef(LatteParser::FuncDefContext *ctx) {
 
 
   variableScope.closeScope();
+  currentReturnType = nullptr;
   return (Def*)funDef;
+}
+
+FunctionDef* TypeChecker::parseFunctionProto(antlr4::ParserRuleContext *ctx,
+                                     const std::string &funName) {
+  auto *funDef = new FunctionDef(nullptr, funName);
+  auto * funType = new FunctionType;
+  funType->returnType = visit(ctx->children.front());
+
+  if (ctx->children.size() == 6) {
+      funDef->arguments =
+          visit(ctx->children.at(3)).as<std::vector<VarDecl*>>();
+      for (VarDecl *argDecl : funDef->arguments) {
+        funType->argumentTypes.push_back(argDecl->type);
+      }
+    }
+    else {
+      assert(ctx->children.size() == 5);
+    }
+  funDef->type = funType;
+  return funDef;
 }
 
 antlrcpp::Any TypeChecker::visitArg(LatteParser::ArgContext *ctx) {
@@ -465,6 +616,10 @@ antlrcpp::Any TypeChecker::visitEId(LatteParser::EIdContext *ctx) {
   Def *def = variableScope.findName(varName);
   if (auto *varDecl = dyn_cast<VarDecl>(def))
     return (Expr*)new VarExpr(varDecl);
+  if (auto *fieldDecl = dyn_cast<FieldDecl>(def)) {
+    auto * thisPtr = cast<VarDecl>(variableScope.findName("$this"));
+    return (Expr *) new MemberExpr(new VarExpr(thisPtr), fieldDecl);
+  }
   return (Expr*)new FunExpr(cast<FunctionDef>(def));
 }
 
@@ -563,27 +718,18 @@ antlrcpp::Any TypeChecker::visitEParen(LatteParser::EParenContext *ctx) {
   return getAsRValue(visit(ctx->children.at(1)));
 }
 
-antlrcpp::Any TypeChecker::visitEFunCall(LatteParser::EFunCallContext *ctx) {
-  assert(3 <= ctx->children.size());
-  Expr *expr = visit(ctx->children.front());
-  if (!isa<FunExpr>(expr)) {
-    context.diagnostic.issueError(
-        "Type '" + expr->type->toString() + "' can't be called", ctx);
-    return (Expr *) nullptr;
-  }
+std::vector<Expr*> TypeChecker::parseCallArguments(
+    LatteParser::EFunCallContext *ctx,
+    FunctionDef *funDef) {
 
-  auto *funExpr = cast<FunExpr>(expr);
-  auto *funDef =  funExpr->def;
-
-  auto *callExpr = new CallExpr(expr, funDef->getFunType()->returnType);
   if (ctx->children.size() <= 3) {
     if (!funDef->arguments.empty())
       context.diagnostic.issueError("Function '" + funDef->name + "' requires "
                                         + std::to_string(funDef->getFunType()->argumentTypes.size())
                                         + " arguments; 0 was provided\n"
-                                    "Function signature: " + funDef->type->toString()
+                                            "Function signature: " + funDef->type->toString()
           , ctx);
-    return (Expr*)callExpr;
+    return {};
   }
 
   auto argumentExprs = [this](auto *ctx) {
@@ -595,32 +741,56 @@ antlrcpp::Any TypeChecker::visitEFunCall(LatteParser::EFunCallContext *ctx) {
     return argumentTypes;
   }(ctx);
 
-  callExpr->arguments = argumentExprs;
+
 
   if (argumentExprs.size() != funDef->getFunType()->argumentTypes.size()) {
     context.diagnostic.issueError("Function '" + funDef->name + "' requires "
                                       + std::to_string(funDef->getFunType()->argumentTypes.size())
                                       + " arguments; " +
         std::to_string(argumentExprs.size()) + " was provided", ctx);
-    return (Expr*)callExpr;
+    return argumentExprs;
   }
 
 
   for (unsigned i = 0; i < argumentExprs.size(); i++) {
     if (argumentExprs.at(i) == nullptr)
-      return (Expr*)callExpr;
+      return argumentExprs;
     if (*argumentExprs.at(i)->type == *funDef->getFunType()->argumentTypes.at(i))
       continue;
     context.diagnostic.issueError("Function '" + funDef->name + "' expects type '"
-        + funDef->getFunType()->argumentTypes.at(i)->toString() + "' as argument "
+                                      + funDef->getFunType()->argumentTypes.at(i)->toString() + "' as argument "
                                       + std::to_string(funDef->getFunType()->argumentTypes.size())
                                       + "; got argument of type '"
                                       + argumentExprs.at(i)->type->toString() +"'"
         , ctx);
   }
 
-  return (Expr*)callExpr;
+  return argumentExprs;
+}
 
+antlrcpp::Any TypeChecker::visitEFunCall(LatteParser::EFunCallContext *ctx) {
+  assert(3 <= ctx->children.size());
+  Expr *expr = visit(ctx->children.front());
+  if (!isa<FunExpr>(expr) && !isa<MethodExpr>(expr)) {
+    context.diagnostic.issueError(
+        "Type '" + expr->type->toString() + "' can't be called", ctx);
+    return (Expr *) nullptr;
+  }
+  if (auto *funExpr = dyn_cast<FunExpr>(expr)) {
+    auto *callExpr = new CallExpr(expr, funExpr->def->getFunType()->returnType);
+    callExpr->arguments = parseCallArguments(ctx, funExpr->def);
+    return (Expr*)callExpr;
+  }
+
+  if (auto *methodExpr = dyn_cast<MethodExpr>(expr)) {
+    auto *callExpr = new MemberCallExpr(methodExpr->thisPtr,
+                                        expr,
+                                        methodExpr->funDef->getFunType()->returnType);
+    callExpr->arguments = parseCallArguments(ctx, methodExpr->funDef);
+    return (Expr*)callExpr;
+  }
+
+  llvm_unreachable("Unhandled fun call");
 }
 
 antlrcpp::Any TypeChecker::visitRet(LatteParser::RetContext *ctx) {
@@ -676,7 +846,6 @@ antlrcpp::Any TypeChecker::visitWhile(LatteParser::WhileContext *ctx) {
   return (Stmt*) new WhileStmt{cond, stmt};
 }
 
-
 antlrcpp::Any TypeChecker::visitEmpty(LatteParser::EmptyContext *) {
   return (Stmt*)new EmptyStmt;
 }
@@ -694,7 +863,8 @@ antlrcpp::Any TypeChecker::visitSExp(LatteParser::SExpContext *ctx) {
 
 antlrcpp::Any TypeChecker::visitEMemberExpr(LatteParser::EMemberExprContext *ctx) {
   assert(ctx->children.size() == 3);
-  Expr *lhs = visit(ctx->children.at(0));
+  // TODO getAsRvalue?
+  Expr *lhs = getAsRValue(visit(ctx->children.at(0)));
 
   if (!isa<ClassType>(lhs->type)) {
     context.diagnostic.issueError(
@@ -707,24 +877,17 @@ antlrcpp::Any TypeChecker::visitEMemberExpr(LatteParser::EMemberExprContext *ctx
   ClassDef * classDef = classes.at(type->name);
 
   const std::string& id = ctx->children.at(2)->getText();
-  FieldDecl *fieldDecl = classDef->getFieldWithName(id);
 
-  if (!fieldDecl) {
-    context.diagnostic.issueError("Unknown filed with name '" + id +
-        "' for class " + classDef->className, ctx);
-    return (Expr*)nullptr;
+  if (FieldDecl *fieldDecl = classDef->getFieldWithName(id)) {
+    return (Expr*) new MemberExpr(lhs, fieldDecl);
+  }
+  if (FunctionDef *functionDef = classDef->getFunctionWithName(id)) {
+    return (Expr*) new MethodExpr(lhs, functionDef);
   }
 
-  return (Expr*) new MemberExpr(lhs, fieldDecl);
-}
-
-antlrcpp::Any TypeChecker::visitFieldDecl(LatteParser::FieldDeclContext *ctx) {
-  assert(ctx->children.size() == 3);
-
-  Type *type = visit(ctx->children.front());
-  const std::string &name = ctx->children.at(1)->getText();
-
-  return new FieldDecl(name, type);
+  context.diagnostic.issueError("Unknown filed or method with name '" + id +
+      "' for class " + classDef->className, ctx);
+  return (Expr*)nullptr;
 }
 
 antlrcpp::Any TypeChecker::visitENewExpr(LatteParser::ENewExprContext *ctx) {
@@ -760,5 +923,4 @@ antlrcpp::Any TypeChecker::visitEClassCast(LatteParser::EClassCastContext *ctx) 
 antlrcpp::Any TypeChecker::visitENull(LatteParser::ENullContext *) {
   return (Expr*)new NullExpr();
 }
-
 

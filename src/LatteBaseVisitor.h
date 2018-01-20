@@ -31,6 +31,10 @@ public:
     return visitChildren(ctx);
   }
 
+  virtual antlrcpp::Any visitMethodDef(LatteParser::MethodDefContext *ctx) override {
+    return visitChildren(ctx);
+  }
+
   virtual antlrcpp::Any visitArg(LatteParser::ArgContext *ctx) override {
     return visitChildren(ctx);
   }

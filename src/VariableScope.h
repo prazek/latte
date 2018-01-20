@@ -6,13 +6,18 @@
 template <typename Storage>
 class VariableScope {
 public:
-  void openNewScope() {
-    varTypes.emplace_back();
+
+  using Scope = std::unordered_map<std::string, Storage>;
+
+  void openNewScope(Scope scope = Scope()) {
+    varTypes.push_back(std::move(scope));
   }
 
-  void closeScope() {
+  Scope closeScope() {
     assert(!varTypes.empty());
+    Scope scope = std::move(varTypes.back());
     varTypes.pop_back();
+    return scope;
   }
 
   [[nodiscard]]
@@ -68,7 +73,10 @@ public:
     assert(false && "need to find unregistered variable");
   }
 
+
+
 private:
-  std::vector<std::unordered_map<std::string, Storage>> varTypes;
+
+  std::vector<Scope> varTypes;
 };
 

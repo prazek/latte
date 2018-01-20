@@ -23,6 +23,7 @@ void LLVMCodeGenPrepare::visitAST(AST &ast) {
                            llvm::Function::ExternalLinkage, functionDef->name,
                            &module);
   }
+
   std::vector<Def*> ctorsDefs;
   for (Def * def : ast.definitions) {
     if (auto *classDef = dyn_cast<ClassDef>(def)) {
@@ -48,10 +49,17 @@ void LLVMCodeGenPrepare::visitAST(AST &ast) {
 
 
 void LLVMCodeGenPrepare::visitFunctionDef(FunctionDef &functionDef) {
-  auto *funType = llvm::cast<llvm::FunctionType>(functionDef.getFunType()->toLLVMType(module));
+  createFunction(functionDef, functionDef.name);
+
+}
+
+void LLVMCodeGenPrepare::createFunction(FunctionDef &functionDef,
+                                        const std::string &functionName) {
+  auto *funType = llvm::cast<llvm::FunctionType>(functionDef.getFunType()->toLLVMType(
+      module));
   llvm::Function *function  =
       llvm::Function::Create(funType,
-                             llvm::Function::ExternalLinkage, functionDef.name,
+                             llvm::GlobalValue::ExternalLinkage, functionName,
                              &module);
 
   assert(functionDef.arguments.size() == function->arg_size());
@@ -73,7 +81,6 @@ void LLVMCodeGenPrepare::visitFunctionDef(FunctionDef &functionDef) {
     functionDef.block.stmts.push_back(new ReturnStmt(nullptr));
   else // Add unreachable
     functionDef.block.stmts.push_back(new UnreachableStmt);
-
 }
 
 void LLVMCodeGenPrepare::visitClassDef(ClassDef &def) {
@@ -81,10 +88,19 @@ void LLVMCodeGenPrepare::visitClassDef(ClassDef &def) {
 
   llvm::SmallVector<llvm::Type*, 4> fieldTypes;
   fieldTypes.reserve(def.fieldDecls.size());
+
   for (FieldDecl *field : def.fieldDecls)
     fieldTypes.push_back(field->type->toLLVMType(module));
-
   type->setBody(fieldTypes);
+
+  for (FunctionDef *method : def.methodDecls) {
+    method->name = mangleMethodName(def.className, method->name);
+    method->arguments.insert(method->arguments.begin(), method->thisPtr);
+    method->getFunType()->argumentTypes.insert(
+        method->getFunType()->argumentTypes.begin(), method->thisPtr->type);
+
+    createFunction(*method, method->name);
+  }
 }
 
 void LLVMCodeGenPrepare::visitDeclStmt(DeclStmt &) {}
@@ -107,3 +123,6 @@ void LLVMCodeGenPrepare::visitMemberExpr(MemberExpr &) {}
 void LLVMCodeGenPrepare::visitNewExpr(NewExpr &) {}
 void LLVMCodeGenPrepare::visitClassCastExpr(ClassCastExpr &) {}
 void LLVMCodeGenPrepare::visitNullExpr(NullExpr &) {}
+void LLVMCodeGenPrepare::visitMemberCallExpr(MemberCallExpr &) {}
+void LLVMCodeGenPrepare::visitVTableExpr(VTableExpr &) {}
+void LLVMCodeGenPrepare::visitMethodExpr(MethodExpr &) {}

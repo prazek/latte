@@ -13,6 +13,10 @@ inline std::string getNewOperatorName(const std::string &className) {
   return className + "$new";
 }
 
+inline std::string mangleMethodName(const std::string &className,
+                                    const std::string methodName) {
+  return className + "$$" + methodName;
+}
 
 FunctionDef *createConstructor(ClassDef &def);
 

@@ -86,6 +86,8 @@ public:
       return visitBinExpr(*binExpr);
     if (auto *varExpr = dyn_cast<VarExpr>(expr))
       return visitVarExpr(*varExpr);
+    if (auto *methodExpr = dyn_cast<MethodExpr>(expr))
+      return visitMethodExpr(*methodExpr);
     if (auto *memberExpr = dyn_cast<MemberExpr>(expr))
       return visitMemberExpr(*memberExpr);
     if (auto *classCastExpr = dyn_cast<ClassCastExpr>(expr))
@@ -98,8 +100,12 @@ public:
       return visitConstIntExpr(*constIntExpr);
     if (auto *booleanExpr = dyn_cast<BooleanExpr>(expr))
       return visitBooleanExpr(*booleanExpr);
+    if (auto *vtableExpr = dyn_cast<VTableExpr>(expr))
+      return visitVTableExpr(*vtableExpr);
     if (auto *callExpr = dyn_cast<CallExpr>(expr))
       return visitCallExpr(*callExpr);
+    if (auto *memberCallExpr = dyn_cast<MemberCallExpr>(expr))
+      return visitMemberCallExpr(*memberCallExpr);
     if (auto *constStringExpr = dyn_cast<ConstStringExpr>(expr))
       return visitConstStringExpr(*constStringExpr);
     if (auto *parenExpr = dyn_cast<ParenExpr>(expr))
@@ -113,13 +119,16 @@ public:
   virtual T visitUnaryExpr(UnaryExpr &unaryExpr) = 0;
   virtual T visitBinExpr(BinExpr &binExpr) = 0;
   virtual T visitVarExpr(VarExpr &varExpr) = 0;
+  virtual T visitMethodExpr(MethodExpr &methodExpr) = 0;
   virtual T visitMemberExpr(MemberExpr &memberExpr) = 0;
   virtual T visitNewExpr(NewExpr &newExpr) = 0;
   virtual T visitClassCastExpr(ClassCastExpr &classCastExpr) = 0;
   virtual T visitFunExpr(FunExpr &funExpr) = 0;
   virtual T visitConstIntExpr(ConstIntExpr &constIntExpr) = 0;
   virtual T visitBooleanExpr(BooleanExpr &booleanExpr) = 0;
+  virtual T visitVTableExpr(VTableExpr &vTableExpr) = 0;
   virtual T visitCallExpr(CallExpr &callExpr) = 0;
+  virtual T visitMemberCallExpr(MemberCallExpr &memberCallExpr) = 0;
   virtual T visitConstStringExpr(ConstStringExpr &constStringExpr) = 0;
   virtual T visitParenExpr(ParenExpr &parenExpr) {
     return visitExpr(*parenExpr.expr);

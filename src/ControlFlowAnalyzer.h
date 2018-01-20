@@ -39,6 +39,9 @@ public:
   ReturnInfo visitNewExpr(NewExpr &newExpr) override;
   ReturnInfo visitClassCastExpr(ClassCastExpr &classCastExpr) override;
   ReturnInfo visitNullExpr(NullExpr &nullExpr) override;
+  ReturnInfo visitMemberCallExpr(MemberCallExpr &memberCallExpr) override;
+  ReturnInfo visitVTableExpr(VTableExpr &vTableExpr) override;
+  ReturnInfo visitMethodExpr(MethodExpr &methodExpr) override;
 
 private:
   Diagnostic& diagnostics;

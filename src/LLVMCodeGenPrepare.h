@@ -32,10 +32,15 @@ public:
   void visitNewExpr(NewExpr &newExpr) override;
   void visitClassCastExpr(ClassCastExpr &classCastExpr) override;
   void visitNullExpr(NullExpr &nullExpr) override;
+  void visitMemberCallExpr(MemberCallExpr &memberCallExpr) override;
+  void visitVTableExpr(VTableExpr &vTableExpr) override;
+  void visitMethodExpr(MethodExpr &methodExpr) override;
 
 private:
   llvm::Module &module;
   llvm::IRBuilder<> builder;
+  void createFunction(FunctionDef &functionDef,
+                      const std::string &functionName);
 };
 
 

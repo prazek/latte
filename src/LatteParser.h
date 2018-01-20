@@ -122,6 +122,17 @@ public:
     virtual antlrcpp::Any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
   };
 
+  class  MethodDefContext : public ClassItemContext {
+  public:
+    MethodDefContext(ClassItemContext *ctx);
+
+    Type_Context *type_();
+    antlr4::tree::TerminalNode *ID();
+    BlockContext *block();
+    ArgContext *arg();
+    virtual antlrcpp::Any accept(antlr4::tree::ParseTreeVisitor *visitor) override;
+  };
+
   ClassItemContext* classItem();
 
   class  ArgContext : public antlr4::ParserRuleContext {
