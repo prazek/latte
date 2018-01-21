@@ -226,7 +226,7 @@ antlrcpp::Any TypeChecker::visitClassDef(LatteParser::ClassDefContext *ctx) {
   if (currentPass == Passes::registerClassesNames) {
     auto *classType = new ClassType(className);
     auto *classDef = new ClassDef(classType->name, classType);
-
+    currentClass = classDef;
     if (!classes.insert({classType->name, classDef}).second) {
       context.diagnostic.issueError(
           "Duplicated name for '" + classType->name + "'", ctx);
@@ -249,6 +249,8 @@ antlrcpp::Any TypeChecker::visitClassDef(LatteParser::ClassDefContext *ctx) {
   if (currentPass == Passes::parseClassesWithMethodesPrototypes) {
     variableScope.openNewScope();
     auto *classDef = classes.at(className);
+    currentClass = classDef;
+
     // Wait untill the base class will be ready
     if (haveBaseClass && (classDef->baseClass == nullptr ||
         unfinishedClasses.count(classDef->baseClass->className))) {
@@ -277,6 +279,7 @@ antlrcpp::Any TypeChecker::visitClassDef(LatteParser::ClassDefContext *ctx) {
     classesScope.erase(className);
 
     auto *classDef = classes.at(className);
+    currentClass = classDef;
     parseClassBody(ctx, classDef);
 
     variableScope.closeScope();
@@ -315,7 +318,9 @@ ClassDef *TypeChecker::parseClassBody(LatteParser::ClassDefContext *ctx,
 
     std::vector<FieldDecl *> fields = baseFields(classDef);
     if (fields.empty()) {
-      fields.push_back(new FieldDecl("$vptr", new VptrType));
+      auto * vptr = new FieldDecl("$vptr", new VptrType);
+      vptr->fieldId = 0;
+      fields.push_back(vptr);
       // TODO add ref count
     }
     std::vector<FunctionDef *> methods = baseMethods(classDef);
@@ -341,7 +346,7 @@ ClassDef *TypeChecker::parseClassBody(LatteParser::ClassDefContext *ctx,
       }
 
       if (auto *methodDecl = dyn_cast<FunctionDef>(decl)) {
-        handleMethodDecl(methodDecl, fields, methods, ctx, classDef);
+        handleMethodDecl(methodDecl, fields, methods, ctx);
         methodDecl->methodID = methodID++;
       }
     }
@@ -372,8 +377,7 @@ ClassDef *TypeChecker::parseClassBody(LatteParser::ClassDefContext *ctx,
 void TypeChecker::handleMethodDecl(FunctionDef *methodDecl,
                                    const std::vector<FieldDecl*> &fields,
                                    std::vector<FunctionDef*> &methods,
-                                   LatteParser::ClassDefContext *ctx,
-                                   ClassDef *classDef) {
+                                   LatteParser::ClassDefContext *ctx) {
   assert(currentPass == Passes::parseClassesWithMethodesPrototypes);
   auto findBaseMember = [](auto *memberDecl, const auto &members) {
     for (auto *member : members)
@@ -391,12 +395,6 @@ void TypeChecker::handleMethodDecl(FunctionDef *methodDecl,
     assert(false && "Should find method");
   };
 
-  methodDecl->thisPtr = new VarDecl("$this", classDef->type ,nullptr);
-  bool added = variableScope.addName("$this", methodDecl->thisPtr);
-  // TODO
-  //assert(added); (void)added;
-
-  // TODO gdzie ja parsuje argumenty?
   if (findBaseMember(methodDecl, fields) != nullptr) {
     context.diagnostic.issueError(
         "Method '" + methodDecl->name + "' has the same name as field",
@@ -444,6 +442,10 @@ antlrcpp::Any TypeChecker::visitMethodDef(LatteParser::MethodDefContext *ctx) {
   assert(currentReturnType == nullptr);
   currentReturnType = funDef->getFunType()->returnType;
   variableScope.openNewScope();
+
+  funDef->thisPtr = new VarDecl("$this", currentClass->type ,nullptr);
+  bool added = variableScope.addName("$this", funDef->thisPtr);
+  assert(added); (void)added;
 
   for (VarDecl * decl : funDef->arguments) {
     auto b = variableScope.addName(decl->name, decl);

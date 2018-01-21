@@ -43,8 +43,6 @@ llvm::Function *emitNewOperator(llvm::Module &module, ClassDef &def) {
 
 
   auto *malloc = module.getFunction("malloc");
-
-
   auto *classType = module.getTypeByName(def.className);
 
   llvm::DataLayout dataLayout(&module);

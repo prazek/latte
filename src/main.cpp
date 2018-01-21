@@ -109,7 +109,7 @@ int main(int argc, const char* argv[]) {
 
   LLVMCodeGen codeGen(*module);
   codeGen.visitAST(typeChecker.ast);
-  //llvm::verifyModule(*module, &llvm::errs());
+  llvm::verifyModule(*module, &llvm::errs());
 
   //module->print(llvm::errs(), nullptr);
   std::fstream outFile(llvmFileName, std::ios_base::out);
@@ -151,7 +151,7 @@ int main(int argc, const char* argv[]) {
   }
 
   ostream.flush();
-  llvm::verifyModule(*Composite, &llvm::errs());
+  //llvm::verifyModule(*Composite, &llvm::errs());
   WriteBitcodeToFile(Composite.get(), bitcodeOstream);
   bitcodeOstream.flush();
   //std::string linkCommand = "llvm-link-3.7 -o " + bcFileName + " " + bcFileName + " lib/runtime.ll ";

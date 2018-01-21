@@ -14,7 +14,7 @@
 #include "LLVMClassCodeGen.h"
 
 llvm::Value *LLVMCodeGen::visitFunctionDef(FunctionDef &functionDef) {
-
+  varAddr.clear();
   llvm::Function *function = module.getFunction(functionDef.name);
   currentFunction = function;
 
@@ -27,21 +27,18 @@ llvm::Value *LLVMCodeGen::visitFunctionDef(FunctionDef &functionDef) {
 
     auto *alloca = builder.CreateAlloca(varDecl->type->toLLVMType(module));
     builder.CreateStore(arg.stripPointerCasts(), alloca);
+    assert(varAddr.count(varDecl) == 0);
     varAddr[varDecl] = alloca;
   }
 
-
   currentFunction = function;
   visitBlock(functionDef.block);
-
-  return {};
+  return nullptr;
 }
 
 llvm::Value *LLVMCodeGen::visitClassDef(ClassDef &classDef) {
   for (auto *methodDef : classDef.methodDecls) {
-
     visitFunctionDef(*methodDef);
-
   }
   return nullptr;
 }
@@ -55,6 +52,7 @@ llvm::Value *LLVMCodeGen::visitVarDecl(VarDecl &declItem) {
   llvm::Value* value = visitExpr(*declItem.initializer);
   builder.CreateStore(value, instruction);
 
+  assert(varAddr.count(&declItem) == 0);
   varAddr[&declItem] = instruction;
   return instruction;
 }

@@ -30,7 +30,7 @@ private:
   Passes currentPass;
 
   Type *currentReturnType = nullptr;
-
+  ClassDef *currentClass = nullptr;
 public:
 
   AST ast;
@@ -89,8 +89,7 @@ private:
   void handleMethodDecl(FunctionDef *methodDecl,
                         const std::vector<FieldDecl*> &fields,
                         std::vector<FunctionDef*> &methods,
-                        LatteParser::ClassDefContext *ctx,
-                        ClassDef *classDef);
+                        LatteParser::ClassDefContext *ctx);
 
   std::vector<Expr*> parseCallArguments(LatteParser::EFunCallContext *ctx, FunctionDef *funDef);
   FunctionDef* parseFunctionProto(antlr4::ParserRuleContext *ctx,
