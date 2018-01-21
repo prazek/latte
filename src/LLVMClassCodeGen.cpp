@@ -13,12 +13,12 @@ FunctionDef *createConstructor(ClassDef &def) {
   for (auto* fieldDecl : def.fieldDecls) {
     if (isa<VptrType>(fieldDecl->type)) {
 
-      funDef->block.stmts.push_back(new AssignStmt(new MemberExpr(new VarExpr(arg), fieldDecl),
+      funDef->block.stmts.push_back(new AssignStmt(new MemberExpr(getAsRValue(new VarExpr(arg)), fieldDecl),
                                                   new VTableExpr(&def)));
       continue;
     }
 
-    funDef->block.stmts.push_back(new AssignStmt(new MemberExpr(new VarExpr(arg), fieldDecl),
+    funDef->block.stmts.push_back(new AssignStmt(new MemberExpr(getAsRValue(new VarExpr(arg)), fieldDecl),
                                                  getDefaultInitializer(*fieldDecl->type)
     ));
   }

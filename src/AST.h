@@ -95,6 +95,13 @@ struct ClassDef final : Def {
 
   FunctionDef *getFunctionWithName(const std::string &name) const;
 
+  bool isBaseOf(ClassDef *other) {
+    if (*type == *other->type)
+      return true;
+    if (!baseClass)
+      return false;
+    return baseClass->isBaseOf(other);
+  }
 
   std::string dump(int ident) const override;
 };

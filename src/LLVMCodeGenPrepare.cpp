@@ -94,6 +94,12 @@ void LLVMCodeGenPrepare::visitClassDef(ClassDef &def) {
   type->setBody(fieldTypes);
 
   for (FunctionDef *method : def.methodDecls) {
+    // If not generated.
+    if (method->name.find("$$") != std::string::npos) {
+      //method->arguments.at(0) = method->thisPtr;
+      //method->getFunType()->argumentTypes.at(0) = def.type;
+      continue;
+    }
     method->name = mangleMethodName(def.className, method->name);
     method->arguments.insert(method->arguments.begin(), method->thisPtr);
     method->getFunType()->argumentTypes.insert(

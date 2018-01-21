@@ -93,7 +93,8 @@ std::string DecrStmt::dump(int ident) const {
   return makeIdent(ident) + "IncrStmt:\n";
 }
 std::string ReturnStmt::dump(int ident) const {
-  return makeIdent(ident) + "ReturnStmt:\n";
+  return makeIdent(ident) + "ReturnStmt:\n"
+      + (expr? expr->dump(ident + 2) : "");
 }
 std::string UnreachableStmt::dump(int ident) const {
   return makeIdent(ident) + "UnreachableStmt:\n";
@@ -126,7 +127,8 @@ std::string ClassCastExpr::dump(int ident) const {
 }
 std::string MemberExpr::dump(int ident) const {
   return makeIdent(ident) + "MemberExpr:\n"
-      + thisPtr->dump(ident + 2) + "\n" + fieldDecl->dump(ident + 2);
+      + thisPtr->dump(ident + 2)
+      + fieldDecl->dump(ident + 2);
 }
 std::string VarExpr::dump(int ident) const {
   return makeIdent(ident) + "VarExpr: " + decl->name + "\n";
@@ -139,7 +141,7 @@ std::string FunExpr::dump(int ident) const {
   return makeIdent(ident) + "FunExpr:";
 }
 std::string ConstIntExpr::dump(int ident) const {
-  return makeIdent(ident) + "ConstIntExpr:" + std::to_string(value);
+  return makeIdent(ident) + "ConstIntExpr:" + std::to_string(value) + "\n";
 }
 std::string VTableExpr::dump(int ident) const {
   return makeIdent(ident) + "VTableExpr:\n" + classDef->dump(ident + 2);

@@ -325,9 +325,8 @@ llvm::Value *LLVMCodeGen::getEmptyString() {
 }
 
 llvm::Value *LLVMCodeGen::visitMemberExpr(MemberExpr &memberExpr) {
-  llvm::Value *stackPtr = visitExpr(*memberExpr.thisPtr);
+  llvm::Value *thisPtr = visitExpr(*memberExpr.thisPtr);
 
-  auto *thisPtr = builder.CreateLoad(stackPtr);
   llvm::ArrayRef<llvm::Value*> indices = {
       llvm::ConstantInt::getSigned(
           llvm::IntegerType::getInt32Ty(module.getContext()), 0),
@@ -335,6 +334,7 @@ llvm::Value *LLVMCodeGen::visitMemberExpr(MemberExpr &memberExpr) {
           llvm::IntegerType::getInt32Ty(module.getContext()),
                                         memberExpr.fieldDecl->fieldId)
   };
+
   auto *gep = builder.CreateGEP(thisPtr, indices);
 
   return builder.CreateBitCast(gep, memberExpr.fieldDecl->type->toLLVMType(module)->getPointerTo(0));
@@ -405,8 +405,12 @@ llvm::Value *LLVMCodeGen::visitMethodExpr(MethodExpr &methodExpr) {
   };
 
   auto *gepVtable = builder.CreateGEP(vtable, vtableIndices);
+  auto newType = *cast<FunctionType>(methodExpr.funDef->type);
+  newType.argumentTypes.at(0) = methodExpr.thisPtr->type;
+
+  auto *funType = llvm::cast<llvm::FunctionType>(newType.toLLVMType(module));
   return builder.CreateBitCast(builder.CreateLoad(gepVtable, "vfun"),
-                               methodExpr.funDef->type->toLLVMType(module)->getPointerTo());
+                               funType->getPointerTo());
 }
 
 

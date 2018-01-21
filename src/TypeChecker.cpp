@@ -160,14 +160,22 @@ antlrcpp::Any TypeChecker::visitAss(LatteParser::AssContext *ctx) {
     return (Stmt*)new AssignStmt(nullptr, rhsExpr);
 
   if (*lhsExpr->type != *rhsExpr->type) {
-    context.diagnostic.issueError("Cannot assign expression of type '"
-                                    + rhsExpr->type->toString()
-                                    + "' to variable of type '"
-                                    + lhsExpr->type->toString() + "'" , ctx);
-    return (Stmt*)new AssignStmt(nullptr, rhsExpr);
+
+    auto *classType = dyn_cast<ClassType>(lhsExpr->type);
+    auto *initializerClassType = dyn_cast<ClassType>(rhsExpr->type);
+    if (classType && initializerClassType &&
+        classes.at(initializerClassType->name)->isBaseOf(classes.at(classType->name))) {
+
+      rhsExpr = new ClassCastExpr(classType, rhsExpr);
+    } else {
+      context.diagnostic.issueError("Cannot assign expression of type '"
+                                        + rhsExpr->type->toString()
+                                        + "' to variable of type '"
+                                        + lhsExpr->type->toString() + "'", ctx);
+      return (Stmt *) new AssignStmt(nullptr, rhsExpr);
+    }
   }
 
-  // TODO memberExpr
   if (isa<VarExpr>(*lhsExpr) || isa<MemberExpr>(*lhsExpr))
     return (Stmt*)new AssignStmt(lhsExpr, rhsExpr);
 
@@ -443,8 +451,8 @@ antlrcpp::Any TypeChecker::visitMethodDef(LatteParser::MethodDefContext *ctx) {
   currentReturnType = funDef->getFunType()->returnType;
   variableScope.openNewScope();
 
-  funDef->thisPtr = new VarDecl("$this", currentClass->type ,nullptr);
-  bool added = variableScope.addName("$this", funDef->thisPtr);
+  funDef->thisPtr = new VarDecl("self", currentClass->type ,nullptr);
+  bool added = variableScope.addName("self", funDef->thisPtr);
   assert(added); (void)added;
 
   for (VarDecl * decl : funDef->arguments) {
@@ -572,10 +580,20 @@ antlrcpp::Any TypeChecker::visitDecl(LatteParser::DeclContext *ctx) {
     declStmt->decls.push_back(declItem);
 
     if (*declItem->initializer->type != *type) {
-      context.diagnostic.issueError(
-        "Cannot initialize variable '"
-          + declItem->name + "' of type '" + type->toString() +
-          "' with initializer of type '" + declItem->initializer->type->toString() + "'", ctx);
+      auto *classType = dyn_cast<ClassType>(type);
+      auto *initializerClassType = dyn_cast<ClassType>(declItem->initializer->type);
+      if (classType && initializerClassType
+            && classes.at(initializerClassType->name)->isBaseOf(classes.at(classType->name))) {
+
+        declItem->initializer = new ClassCastExpr(classType, declItem->initializer);
+      } else {
+        context.diagnostic.issueError(
+            "Cannot initialize variable '"
+                + declItem->name + "' of type '" + type->toString() +
+                "' with initializer of type '"
+                + declItem->initializer->type->toString() + "'", ctx);
+      }
+
     }
 
     if (!variableScope.addName(declItem->name, declItem)) {
@@ -598,7 +616,7 @@ antlrcpp::Any TypeChecker::visitItem(LatteParser::ItemContext *ctx) {
     // this way if variable used on lhs was previously registered then it will
     // not find it and raise an error.
     //auto * rollbackDef = variableScope.temporariryUnregisterName(varName);
-    Expr * expr = visit(ctx->children.at(2));
+    Expr * expr = getAsRValue(visit(ctx->children.at(2)));
     //variableScope.registerBackName(varName, rollbackDef);
     return new VarDecl(varName, nullptr, expr);
   }
@@ -619,8 +637,9 @@ antlrcpp::Any TypeChecker::visitEId(LatteParser::EIdContext *ctx) {
   if (auto *varDecl = dyn_cast<VarDecl>(def))
     return (Expr*)new VarExpr(varDecl);
   if (auto *fieldDecl = dyn_cast<FieldDecl>(def)) {
-    auto * thisPtr = cast<VarDecl>(variableScope.findName("$this"));
-    return (Expr *) new MemberExpr(new VarExpr(thisPtr), fieldDecl);
+    auto * thisPtr = cast<VarDecl>(variableScope.findName("self"));
+    // TODO getAsRvalue?
+    return (Expr *) new MemberExpr(getAsRValue(new VarExpr(thisPtr)), fieldDecl);
   }
   return (Expr*)new FunExpr(cast<FunctionDef>(def));
 }
@@ -910,14 +929,18 @@ antlrcpp::Any TypeChecker::visitEClassCast(LatteParser::EClassCastContext *ctx) 
   Type *type = visit(ctx->children.at(1));
   Expr *expr = visit(ctx->children.at(3));
 
-  if (!isa<ClassType>(type)) {
+  auto *classType = dyn_cast<ClassType>(type);
+  if (!classType) {
     context.diagnostic.issueError("Expected class type", ctx);
     return new ClassCastExpr(nullptr, expr);
   }
 
-  // TODO handle class casts
-  if (!SimpleType::isNull(*expr->type)) {
-    context.diagnostic.issueError("Only null can be casted", ctx);
+  auto *exprClassType = dyn_cast<ClassType>(expr->type);
+  if (!SimpleType::isNull(*expr->type) &&
+      (!exprClassType ||
+          classes.at(exprClassType->name)->isBaseOf(classes.at(classType->name)))) {
+    context.diagnostic.issueError("Type '" + expr->type->toString() +
+        "' can't be casted to type '" + type->toString() + "'", ctx);
   }
 
   return (Expr*)new ClassCastExpr(cast<ClassType>(type), expr);
