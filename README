@@ -16,4 +16,9 @@ Building step downloads ANTLR sources and builds them.
 
 Implemented optimizations:
 -
--
+- devirtualization (using invariant.groups)
+- constant folding
+
+
+Implemented extensions:
+- classes with virtual functions

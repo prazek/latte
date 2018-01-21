@@ -395,9 +395,11 @@ llvm::Value *LLVMCodeGen::visitMethodExpr(MethodExpr &methodExpr) {
           0)
   };
 
-
   auto *gep = builder.CreateGEP(thisPtr, vptrIndices);
   auto *vtable = builder.CreateLoad(gep, "vtable");
+  vtable->setMetadata(llvm::LLVMContext::MD_invariant_group,
+                      llvm::MDNode::get(module.getContext(), llvm::ArrayRef<llvm::Metadata *>()));
+
   llvm::ArrayRef<llvm::Value*> vtableIndices = {
       llvm::ConstantInt::getSigned(
           llvm::IntegerType::getInt64Ty(module.getContext()),
@@ -409,8 +411,12 @@ llvm::Value *LLVMCodeGen::visitMethodExpr(MethodExpr &methodExpr) {
   newType.argumentTypes.at(0) = methodExpr.thisPtr->type;
 
   auto *funType = llvm::cast<llvm::FunctionType>(newType.toLLVMType(module));
-  return builder.CreateBitCast(builder.CreateLoad(gepVtable, "vfun"),
-                               funType->getPointerTo());
+  auto *vfun = builder.CreateLoad(gepVtable, "vfun");
+  vfun->setMetadata(llvm::LLVMContext::MD_invariant_load,
+                    llvm::MDNode::get(module.getContext(), llvm::ArrayRef<llvm::Metadata *>()));
+
+
+  return builder.CreateBitCast(vfun, funType->getPointerTo());
 }
 
 
