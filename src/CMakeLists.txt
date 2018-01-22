@@ -1,10 +1,11 @@
 set(INSTC_LLVM_SOURCE_FILES "")
 
 
-set(antlr_files LatteBaseVisitor.cpp LatteBaseVisitor.h LatteParser.cpp LatteParser.h
-        LatteLexer.cpp LatteLexer.h LatteVisitor.h LatteVisitor.cpp TypeChecker.cpp
-        TypeChecker.h Type.h Utilities.h Diagnostic.cpp Diagnostic.h Context.cpp Context.h
-        LLVMCodeGen.cpp LLVMCodeGen.h VariableScope.h AST.cpp AST.h ASTVisitor.h LLVMCodeGenPrepare.cpp LLVMCodeGenPrepare.h BuiltinFunctions.h ControlFlowAnalyzer.cpp ControlFlowAnalyzer.h LLVMClassCodeGen.cpp LLVMClassCodeGen.h ASTUtils.cpp ASTUtils.h Mem2Reg.cpp Mem2Reg.h)
+set(antlr_files Frontend/LatteBaseVisitor.cpp Frontend/LatteBaseVisitor.h Frontend/LatteParser.cpp Frontend/LatteParser.h
+        Frontend/LatteLexer.cpp Frontend/LatteLexer.h Frontend/LatteVisitor.h Frontend/LatteVisitor.cpp Frontend/TypeChecker.cpp
+        Frontend/TypeChecker.h Frontend/Type.h Frontend/Utilities.h Frontend/Diagnostic.cpp Frontend/Diagnostic.h Frontend/Context.cpp Frontend/Context.h
+        LLVMCodeGen.cpp LLVMCodeGen.h Frontend/VariableScope.h Frontend/AST.cpp Frontend/AST.h Frontend/ASTVisitor.h LLVMCodeGenPrepare.cpp
+        LLVMCodeGenPrepare.h BuiltinFunctions.h Frontend/ControlFlowAnalyzer.cpp Frontend/ControlFlowAnalyzer.h LLVMClassCodeGen.cpp LLVMClassCodeGen.h Frontend/ASTUtils.cpp Frontend/ASTUtils.h Mem2Reg.cpp Mem2Reg.h)
 
 set(SOURCE_FILES ${SOURCE_FILES} ${INSTC_LLVM_SOURCE_FILES} ${antlr_files} main.cpp
         )

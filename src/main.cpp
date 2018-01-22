@@ -1,10 +1,12 @@
 #include "antlr4-runtime.h"
-#include "ControlFlowAnalyzer.h"
-#include "LatteLexer.h"
-#include "LatteParser.h"
-#include "TypeChecker.h"
+#include "Frontend/ControlFlowAnalyzer.h"
+#include "Frontend/LatteLexer.h"
+#include "Frontend/LatteParser.h"
+#include "Frontend/TypeChecker.h"
 #include "LLVMCodeGen.h"
 #include "LLVMCodeGenPrepare.h"
+#include "Mem2Reg.h"
+
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/raw_os_ostream.h"
 #include "llvm/IR/Verifier.h"
@@ -12,7 +14,7 @@
 #include "llvm/Linker/Linker.h"
 #include "llvm/IRReader/IRReader.h"
 #include "llvm/Support/SourceMgr.h"
-#include "Mem2Reg.h"
+
 #include <string>
 #include <fstream>
 

@@ -6,7 +6,7 @@
 #include "llvm/IR/BasicBlock.h"
 #include "llvm/Analysis/CFG.h"
 #include "llvm/IR/InstIterator.h"
-
+#include "llvm/Analysis/InstructionSimplify.h"
 using namespace llvm;
 
 char Mem2Reg::ID;
@@ -34,70 +34,6 @@ bool Mem2Reg::runOnFunction(Function &F) {
     }
   }
 
-
-  SmallPtrSet<BasicBlock*, 8> visitedBlocks;
-  //F.dump();
-  auto processBlock = [this, &visitedBlocks](BasicBlock &bb, BasicBlock *predecessor) {
-    //bb.dump();
-    if (bb.getSinglePredecessor()) {
-      assert(predecessor);
-      for (auto & [alloca, allocaInfo] : info[predecessor]) {
-        info[&bb][alloca].currentValue = allocaInfo.currentValue;
-      }
-    }
-    else if (predecessor) {
-      //predecessor->dump();
-      // Create phi for every incoming value
-      for (auto & [alloca, allocaInfo] : info[predecessor]) {
-        if (!allocaInfo.currentValue)
-          continue;
-        if (!info[&bb][alloca].phi) {
-          auto point = bb.getFirstInsertionPt();
-          info[&bb][alloca].phi =
-              PHINode::Create(cast<AllocaInst>(alloca)->getAllocatedType(),
-                              0,
-                              "",
-                              &*point);
-
-        }
-        info[&bb][alloca].phi->addIncoming(allocaInfo.currentValue,
-                                           predecessor);
-        info[&bb][alloca].currentValue = info[&bb][alloca].phi;
-      }
-    }
-
-
-    if (visitedBlocks.count(&bb))
-      return false;
-
-    visitedBlocks.insert(&bb);
-
-    for (auto it = bb.begin(); it != bb.end(); ) {
-      auto &instr = *it;
-      it++;
-      if (auto *store = dyn_cast<StoreInst>(&instr)) {
-        auto *addr = store->getPointerOperand()->stripPointerCasts();
-        if (info[&bb].count(addr) == 0)
-          continue;
-
-        info[&bb][addr].currentValue = store->getValueOperand();
-        store->eraseFromParent();
-        continue;
-      }
-      if (auto *load = dyn_cast<LoadInst>(&instr)) {
-        auto *addr = load->getPointerOperand()->stripPointerCasts();
-        if (info[&bb].count(addr) == 0)
-          continue;
-
-        load->replaceAllUsesWith(info[&bb][addr].currentValue);
-        load->eraseFromParent();
-
-        continue;
-      }
-
-    }
-    return true;
-  };
 
 
 
@@ -134,3 +70,64 @@ bool Mem2Reg::runOnModule(Module &M) {
     }
   return true;
 }
+bool Mem2Reg::processBlock(BasicBlock &bb, BasicBlock *predecessor) {
+  //bb.dump();
+  if (bb.getSinglePredecessor()) {
+    assert(predecessor);
+    for (auto & [alloca, allocaInfo] : info[predecessor]) {
+      info[&bb][alloca].currentValue = allocaInfo.currentValue;
+    }
+  }
+  else if (predecessor) {
+    //predecessor->dump();
+    // Create phi for every incoming value
+    for (auto & [alloca, allocaInfo] : info[predecessor]) {
+      if (!allocaInfo.currentValue)
+        continue;
+      if (!info[&bb][alloca].phi) {
+        auto point = bb.getFirstInsertionPt();
+        info[&bb][alloca].phi =
+            PHINode::Create(cast<AllocaInst>(alloca)->getAllocatedType(),
+                            0,
+                            "",
+                            &*point);
+
+      }
+      info[&bb][alloca].phi->addIncoming(allocaInfo.currentValue,
+                                         predecessor);
+      info[&bb][alloca].currentValue = info[&bb][alloca].phi;
+    }
+  }
+
+
+  if (visitedBlocks.count(&bb))
+    return false;
+
+  visitedBlocks.insert(&bb);
+
+  for (auto it = bb.begin(); it != bb.end(); ) {
+    auto &instr = *it;
+    it++;
+    if (auto *store = dyn_cast<StoreInst>(&instr)) {
+      auto *addr = store->getPointerOperand()->stripPointerCasts();
+      if (info[&bb].count(addr) == 0)
+        continue;
+
+      info[&bb][addr].currentValue = store->getValueOperand();
+      store->eraseFromParent();
+      continue;
+    }
+    if (auto *load = dyn_cast<LoadInst>(&instr)) {
+      auto *addr = load->getPointerOperand()->stripPointerCasts();
+      if (info[&bb].count(addr) == 0)
+        continue;
+
+      load->replaceAllUsesWith(info[&bb][addr].currentValue);
+      load->eraseFromParent();
+
+      continue;
+    }
+
+  }
+  return true;
+};

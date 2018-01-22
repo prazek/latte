@@ -1,8 +1,7 @@
 #pragma once
 
-#include "ASTVisitor.h"
-#include "LatteBaseVisitor.h"
-#include "TypeChecker.h"
+#include "Frontend/ASTVisitor.h"
+#include "Frontend/TypeChecker.h"
 #include "llvm/IR/Module.h"
 #include "llvm/IR/IRBuilder.h"
 

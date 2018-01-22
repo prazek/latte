@@ -15,7 +15,7 @@ run make from project directory, or use cmake like:
 Building step downloads ANTLR sources and builds them.
 
 Implemented optimizations:
--
+- removing unnecessary allocas and using SSA (Mem2Reg pass)
 - devirtualization (using invariant.groups)
 - constant folding
 
