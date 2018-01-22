@@ -45,10 +45,13 @@ llvm::Value *LLVMCodeGen::visitClassDef(ClassDef &classDef) {
 
 
 llvm::Value *LLVMCodeGen::visitVarDecl(VarDecl &declItem) {
-
+  auto * rollbackBlock = builder.GetInsertBlock();
+  builder.SetInsertPoint(&currentFunction->getEntryBlock(),
+                         currentFunction->getEntryBlock().getFirstInsertionPt());
   llvm::Type * Type = declItem.type->toLLVMType(module);
   auto *instruction = builder.CreateAlloca(Type);
 
+  builder.SetInsertPoint(rollbackBlock);
   llvm::Value* value = visitExpr(*declItem.initializer);
   builder.CreateStore(value, instruction);
 

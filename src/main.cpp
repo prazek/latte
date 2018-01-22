@@ -12,6 +12,7 @@
 #include "llvm/Linker/Linker.h"
 #include "llvm/IRReader/IRReader.h"
 #include "llvm/Support/SourceMgr.h"
+#include "Mem2Reg.h"
 #include <string>
 #include <fstream>
 
@@ -111,6 +112,9 @@ int main(int argc, const char* argv[]) {
   codeGen.visitAST(typeChecker.ast);
   llvm::verifyModule(*module, &llvm::errs());
 
+  Mem2Reg mem2Reg;
+  mem2Reg.runOnModule(*module);
+
   //module->print(llvm::errs(), nullptr);
   std::fstream outFile(llvmFileName, std::ios_base::out);
 
@@ -122,14 +126,7 @@ int main(int argc, const char* argv[]) {
 
   std::fstream outBcFile(bcFileName, std::ios_base::out);
   llvm::raw_os_ostream bitcodeOstream(outBcFile);
-  //module->print(ostream, nullptr);
 
-  //llvm::WriteBitcodeToFile(module.get(), bitcodeOstream);
-
-  //std::string command = "llvm-as " + llvmFileName + " -o " + bcFileName;
-  //std::system(command.c_str());
-
-  //llvm::Linker linker(module.get());
 
   auto Composite = std::make_unique<llvm::Module>("llvm-link", llvmContext);
   llvm::Linker L(*Composite);
@@ -140,7 +137,6 @@ int main(int argc, const char* argv[]) {
       llvm::getLazyIRFileModule("lib/runtime.ll", Err, llvmContext);
 
   if (!Result) {
-    /* error */
     printf("Error! cant load runtime.ll");
     return 42;
   }
@@ -151,11 +147,9 @@ int main(int argc, const char* argv[]) {
   }
 
   ostream.flush();
-  //llvm::verifyModule(*Composite, &llvm::errs());
+
   WriteBitcodeToFile(Composite.get(), bitcodeOstream);
   bitcodeOstream.flush();
-  //std::string linkCommand = "llvm-link-3.7 -o " + bcFileName + " " + bcFileName + " lib/runtime.ll ";
-  //std::system(linkCommand.c_str());
 
   std::cerr << "OK\n";
   return 0;
