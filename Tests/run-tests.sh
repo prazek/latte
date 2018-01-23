@@ -19,6 +19,7 @@ function runTests {
             echo "lli-3.9 $result > out.tmp < $input"
             lli-3.9 $result > out.tmp < $input
         else
+            #opt-3.9 $result -O2 -o $result
             lli-3.9 $result > out.tmp
         fi
         real="${i/.lat/.output}"
