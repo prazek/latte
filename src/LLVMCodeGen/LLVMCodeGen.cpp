@@ -62,10 +62,15 @@ llvm::Value *LLVMCodeGen::visitVarDecl(VarDecl &declItem) {
 
 llvm::Value *LLVMCodeGen::visitAssignStmt(AssignStmt &assignStmt) {
   llvm::Value* rhs = visitExpr(*assignStmt.initializer);
-
   llvm::Value *addr = visitExpr(*assignStmt.lhs);
 
-  return builder.CreateStore(rhs, addr);
+  auto *store = builder.CreateStore(rhs, addr);
+  if (isa<VptrType>(assignStmt.lhs->type))
+    store->setMetadata(llvm::LLVMContext::MD_invariant_group,
+                       llvm::MDNode::get(module.getContext(), llvm::ArrayRef<llvm::Metadata *>()));
+
+
+  return store;
 }
 
 llvm::Value *LLVMCodeGen::visitRValueImplicitCast(RValueImplicitCast &implicitCast) {

@@ -9,7 +9,7 @@ run make from project directory, or use cmake like:
 
   mkdir build
   cd build
-  cmake ../
+  cmake ../n
   make -j32
 
 Building step downloads ANTLR sources and builds them.
@@ -19,6 +19,7 @@ Implemented optimizations:
 - devirtualization (using invariant.groups)
 - constant folding
 - DCE
+- simplify cfg
 
 
 Implemented extensions:

@@ -1,3 +1,4 @@
+#include <iostream>
 #include "CFGSimplify.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/Module.h"
@@ -26,29 +27,40 @@ static bool runInBlock(BasicBlock &BB) {
     } else {
       assert(branch->isConditional());
 
+      auto removeBlockPhiUsages = [](BasicBlock *from, BasicBlock *removedEdgeTo) {
+        for (auto &I : *removedEdgeTo) {
+          if (auto *phi = dyn_cast<PHINode>(&I)) {
+            phi->removeIncomingValue(from);
+          }
+        }
+
+      };
       if (auto *constant = dyn_cast<Constant>(branch->getCondition())) {
         if (constant->isOneValue()) {
-          auto *deadBlock = branch->getSuccessor(1)->getSinglePredecessor()
-                            ? branch->getSuccessor(1) : nullptr;
+          auto *removedEdgeTo = branch->getSuccessor(1);
+          auto *deadBlock = removedEdgeTo->getSinglePredecessor()
+                            ? removedEdgeTo : nullptr;
 
           auto *newBranch = BranchInst::Create(branch->getSuccessor(0));
-          ReplaceInstWithInst(branch, newBranch);
-          if (deadBlock) {
-            DeleteDeadBlock(deadBlock);
-            //deadBlock->removePredecessor(&BB);
-          }
 
+          removeBlockPhiUsages(&BB, removedEdgeTo);
+
+          ReplaceInstWithInst(branch, newBranch);
+          DeleteDeadPHIs(removedEdgeTo);
+          if (deadBlock)
+            DeleteDeadBlock(deadBlock);
         } else {
-          auto *deadBlock = branch->getSuccessor(0)->getSinglePredecessor()
-                            ? branch->getSuccessor(0) : nullptr;
+
+          auto *removedEdgeTo = branch->getSuccessor(0);
+          auto *deadBlock = removedEdgeTo->getSinglePredecessor()
+                            ? removedEdgeTo : nullptr;
 
           auto *newBranch = BranchInst::Create(branch->getSuccessor(1));
+          removeBlockPhiUsages(&BB, removedEdgeTo);
           ReplaceInstWithInst(branch, newBranch);
-
-          if (deadBlock) {
+          DeleteDeadPHIs(removedEdgeTo);
+          if (deadBlock)
             DeleteDeadBlock(deadBlock);
-            //deadBlock->removePredecessor(&BB);
-          }
 
 
         }
@@ -69,6 +81,8 @@ bool CFGSimplify::runOnFunction(llvm::Function &function) {
   return changed;
 }
 bool CFGSimplify::runOnModule(llvm::Module &module) {
-  while (BasicModulePass::runOnModule(module)) {}
+  do {
+    //module.dump();
+  } while (BasicModulePass::runOnModule(module));
   return false;
 }

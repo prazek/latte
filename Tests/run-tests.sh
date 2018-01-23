@@ -4,6 +4,10 @@ cd ../
 
 function runTests {
     FILES=$1
+    lli=~/MRJP/llvm39/bin/lli
+    if [ ! -f $lli ]; then
+        lli="lli-3.9"
+    fi
     for i in $FILES
     do
         echo "running $i"
