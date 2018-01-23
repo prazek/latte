@@ -2,12 +2,12 @@
 
 #include "llvm/Pass.h"
 
-class BasicModulePass : llvm::ModulePass{
+class BasicModulePass { //: llvm::ModulePass{
 public:
   static char ID;
-  BasicModulePass() : ModulePass(ID) {}
+  //BasicModulePass() : ModulePass(ID) {}
 
-  bool runOnModule(llvm::Module &module) override;
+  virtual bool runOnModule(llvm::Module &module);
 
   virtual bool runOnFunction(llvm::Function &function) = 0;
 

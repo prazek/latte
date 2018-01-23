@@ -17,9 +17,9 @@ function runTests {
         input="${i/.lat/.input}"
         if [ -f $input ]; then
             echo "lli-3.9 $result > out.tmp < $input"
-            lli-3.9 $result > out.tmp < $input
+            $lli $result > out.tmp < $input
         else
-            lli-3.9 $result > out.tmp
+            $lli $result > out.tmp
         fi
         real="${i/.lat/.output}"
         echo $real
