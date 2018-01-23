@@ -5,7 +5,7 @@ add_subdirectory(Frontend)
 set(antlr_files LLVMCodeGen/LLVMCodeGenPrepare.cpp
         LLVMCodeGen/LLVMCodeGenPrepare.h Frontend/BuiltinFunctions.h
         LLVMCodeGen/LLVMClassCodeGen.cpp LLVMCodeGen/LLVMClassCodeGen.h LLVMCodeGen/LLVMCodeGen.h LLVMCodeGen/LLVMCodeGen.cpp
-        Mem2Reg.cpp Mem2Reg.h ConstantProp.cpp ConstantProp.h BasicModulePass.cpp BasicModulePass.h)
+        Mem2Reg.cpp Mem2Reg.h ConstantProp.cpp ConstantProp.h BasicModulePass.cpp BasicModulePass.h CFGSimplify.cpp CFGSimplify.h)
 
 set(SOURCE_FILES ${SOURCE_FILES} ${INSTC_LLVM_SOURCE_FILES} ${antlr_files} main.cpp
         )

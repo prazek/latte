@@ -8,12 +8,13 @@
 char BasicModulePass::ID;
 
 bool BasicModulePass::runOnModule(llvm::Module &M) {
+  bool changed = false;
   for (auto &fun : M.functions()) {
     if (skipFunction(fun))
       continue;
-    runOnFunction(fun);
+    changed |= runOnFunction(fun);
   }
-  return true;
+  return changed;
 }
 
 bool BasicModulePass::skipFunction(llvm::Function &F) {

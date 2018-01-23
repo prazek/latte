@@ -1,20 +1,17 @@
 #pragma once
 
 #include "llvm/Pass.h"
-#include "llvm/Pass.h"
-#include "llvm/IR/BasicBlock.h"
-#include "llvm/IR/Instructions.h"
 
 class BasicModulePass : llvm::ModulePass{
 public:
   static char ID;
   BasicModulePass() : ModulePass(ID) {}
 
-  bool runOnModule(llvm::Module &M) override;
+  bool runOnModule(llvm::Module &module) override;
 
-  virtual bool runOnFunction(llvm::Function &F) = 0;
+  virtual bool runOnFunction(llvm::Function &function) = 0;
 
-  virtual bool skipFunction(llvm::Function &F);
+  virtual bool skipFunction(llvm::Function &function);
 };
 
 

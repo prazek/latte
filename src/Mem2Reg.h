@@ -1,5 +1,8 @@
 #pragma once
 #include "BasicModulePass.h"
+#include "llvm/IR/Value.h"
+#include "llvm/IR/Instructions.h"
+
 
 /// This class removes allocas with loads and stores to them
 /// and transform IR to SSA.

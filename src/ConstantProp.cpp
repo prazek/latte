@@ -14,24 +14,23 @@ using namespace llvm;
 bool ConstantProp::runOnFunction(Function &function) {
 
   const DataLayout &DL = function.getParent()->getDataLayout();
-  std::unordered_set<Instruction*> WorkList;
+  std::unordered_set<Instruction*> workList;
   for (Instruction &instr: instructions(&function))
-    WorkList.insert(&instr);
+    workList.insert(&instr);
 
   bool changed = false;
-  while (!WorkList.empty()) {
-    Instruction *instr = *WorkList.begin();
-    WorkList.erase(WorkList.begin());
+  while (!workList.empty()) {
+    Instruction *instr = *workList.begin();
+    workList.erase(workList.begin());
 
     if (!instr->use_empty())
-      if (Constant *C = ConstantFoldInstruction(instr, DL)) {
+      if (Constant *constant = ConstantFoldInstruction(instr, DL)) {
 
-        for (User *U : instr->users())
-          WorkList.insert(cast<Instruction>(U));
+        for (User *user : instr->users())
+          workList.insert(cast<Instruction>(user));
 
-        instr->replaceAllUsesWith(C);
-
-        WorkList.erase(instr);
+        instr->replaceAllUsesWith(constant);
+        workList.erase(instr);
         if (isInstructionTriviallyDead(instr))
           instr->eraseFromParent();
         

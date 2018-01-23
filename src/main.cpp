@@ -15,6 +15,7 @@
 #include "llvm/IRReader/IRReader.h"
 #include "llvm/Support/SourceMgr.h"
 #include "ConstantProp.h"
+#include "CFGSimplify.h"
 
 #include <string>
 #include <fstream>
@@ -113,13 +114,16 @@ int main(int argc, const char* argv[]) {
 
   LLVMCodeGen codeGen(*module);
   codeGen.visitAST(typeChecker.ast);
-  llvm::verifyModule(*module, &llvm::errs());
+  //llvm::verifyModule(*module, &llvm::errs());
 
   Mem2Reg mem2Reg;
   mem2Reg.runOnModule(*module);
 
   ConstantProp constantProp;
   constantProp.runOnModule(*module);
+
+  CFGSimplify cfgSimplify;
+  cfgSimplify.runOnModule(*module);
 
   //module->print(llvm::errs(), nullptr);
   std::fstream outFile(llvmFileName, std::ios_base::out);

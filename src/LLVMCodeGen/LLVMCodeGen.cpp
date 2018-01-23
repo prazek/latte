@@ -220,13 +220,17 @@ llvm::Value *LLVMCodeGen::visitIfStmt(IfStmt &condStmt) {
   llvm::BasicBlock *labAfter = labFalse;
 
   if (condStmt.elseStmt) {
+    builder.SetInsertPoint(labFalse);
+    visitStmt(*condStmt.elseStmt);
+
     labAfter =
         llvm::BasicBlock::Create(module.getContext(), "", currentFunction);
 
-    if (lastBlock->empty() || !llvm::isa<llvm::TerminatorInst>(lastBlock->back()))
+    if (lastBlock->empty() || !llvm::isa<llvm::TerminatorInst>(lastBlock->back())) {
+      builder.SetInsertPoint(lastBlock);
       builder.CreateBr(labAfter);
-    builder.SetInsertPoint(labFalse);
-    visitStmt(*condStmt.elseStmt);
+      builder.SetInsertPoint(labFalse);
+    }
     lastBlock = labFalse;
   }
 
