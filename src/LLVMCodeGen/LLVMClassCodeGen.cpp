@@ -1,5 +1,5 @@
 #include "LLVMClassCodeGen.h"
-#include "Frontend/ASTUtils.h"
+#include "../Frontend/ASTUtils.h"
 #include <llvm/IR/IRBuilder.h>
 
 FunctionDef *createConstructor(ClassDef &def) {

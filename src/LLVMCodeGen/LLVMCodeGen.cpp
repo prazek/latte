@@ -10,7 +10,7 @@
 #include "llvm/IR/LLVMContext.h"
 
 #include "llvm/IR/Verifier.h"
-#include "BuiltinFunctions.h"
+#include "../Frontend/BuiltinFunctions.h"
 #include "LLVMClassCodeGen.h"
 
 llvm::Value *LLVMCodeGen::visitFunctionDef(FunctionDef &functionDef) {

@@ -2,10 +2,10 @@
 #include "TypeChecker.h"
 #include "Type.h"
 #include "Utilities.h"
-#include "../BuiltinFunctions.h"
+#include "BuiltinFunctions.h"
 #include "AST.h"
 #include "ASTUtils.h"
-#include "../LLVMClassCodeGen.h"
+#include "../LLVMCodeGen/LLVMClassCodeGen.h"
 #include <memory>
 
 antlrcpp::Any TypeChecker::visitBool(LatteParser::BoolContext *) {

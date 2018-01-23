@@ -2,8 +2,8 @@
 
 #pragma once
 
-#include "Frontend/Type.h"
-#include "Frontend/AST.h"
+#include "Type.h"
+#include "AST.h"
 #include <string>
 #include <vector>
 

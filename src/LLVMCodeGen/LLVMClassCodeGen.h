@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Frontend/AST.h"
+#include "../Frontend/AST.h"
 #include "llvm/IR/Function.h"
 #include <string>
 

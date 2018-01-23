@@ -9,7 +9,6 @@
 #include "llvm/Analysis/InstructionSimplify.h"
 using namespace llvm;
 
-char Mem2Reg::ID;
 
 static bool canHandleAlloca(AllocaInst *alloca) {
   for (auto *user : alloca->users())
@@ -20,12 +19,7 @@ static bool canHandleAlloca(AllocaInst *alloca) {
 }
 
 
-
 bool Mem2Reg::runOnFunction(Function &F) {
-  if (F.isDeclaration())
-    return false;
-
-
   for (auto &instr : F.getEntryBlock()) {
     if (auto *alloca = dyn_cast<AllocaInst>(&instr)) {
       if (canHandleAlloca(alloca)) {
@@ -33,8 +27,6 @@ bool Mem2Reg::runOnFunction(Function &F) {
       }
     }
   }
-
-
 
 
   SmallVector<std::pair<BasicBlock*, BasicBlock*>, 8> blocksWorklist;
@@ -63,13 +55,7 @@ bool Mem2Reg::runOnFunction(Function &F) {
 
   return true;
 }
-bool Mem2Reg::runOnModule(Module &M) {
 
-    for (auto &fun : M.functions()) {
-      runOnFunction(fun);
-    }
-  return true;
-}
 bool Mem2Reg::processBlock(BasicBlock &bb, BasicBlock *predecessor) {
   //bb.dump();
   if (bb.getSinglePredecessor()) {
@@ -88,9 +74,7 @@ bool Mem2Reg::processBlock(BasicBlock &bb, BasicBlock *predecessor) {
         auto point = bb.getFirstInsertionPt();
         info[&bb][alloca].phi =
             PHINode::Create(cast<AllocaInst>(alloca)->getAllocatedType(),
-                            0,
-                            "",
-                            &*point);
+                            0, "", &*point);
 
       }
       info[&bb][alloca].phi->addIncoming(allocaInfo.currentValue,

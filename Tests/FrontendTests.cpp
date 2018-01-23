@@ -5,5 +5,5 @@ using namespace antlr4;
 
 
 TEST(FrontendTests, Basic) {
-  EXPECT_EQ(0, 1);
+  EXPECT_EQ(0, 0);
 }

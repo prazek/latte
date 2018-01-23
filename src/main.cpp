@@ -3,8 +3,8 @@
 #include "Frontend/LatteLexer.h"
 #include "Frontend/LatteParser.h"
 #include "Frontend/TypeChecker.h"
-#include "LLVMCodeGen.h"
-#include "LLVMCodeGenPrepare.h"
+#include "LLVMCodeGen/LLVMCodeGen.h"
+#include "LLVMCodeGen/LLVMCodeGenPrepare.h"
 #include "Mem2Reg.h"
 
 #include "llvm/Support/raw_ostream.h"
@@ -14,6 +14,7 @@
 #include "llvm/Linker/Linker.h"
 #include "llvm/IRReader/IRReader.h"
 #include "llvm/Support/SourceMgr.h"
+#include "ConstantProp.h"
 
 #include <string>
 #include <fstream>
@@ -116,6 +117,9 @@ int main(int argc, const char* argv[]) {
 
   Mem2Reg mem2Reg;
   mem2Reg.runOnModule(*module);
+
+  ConstantProp constantProp;
+  constantProp.runOnModule(*module);
 
   //module->print(llvm::errs(), nullptr);
   std::fstream outFile(llvmFileName, std::ios_base::out);

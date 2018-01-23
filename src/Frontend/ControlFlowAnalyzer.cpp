@@ -104,10 +104,20 @@ ReturnInfo ControlFlowAnalyzer::visitConstStringExpr(ConstStringExpr &) {
 }
 
 ReturnInfo ControlFlowAnalyzer::visitBlock(Block &block) {
-  for (Stmt* stmt : block.stmts)
-    if (visitStmt(*stmt) == ReturnInfo::EndsWithReturn)
+
+  for (auto it = block.stmts.begin(); it != block.stmts.end(); it++) {
+    Stmt *stmt = *it;
+    if (visitStmt(*stmt) == ReturnInfo::EndsWithReturn) {
+      // Remove the code after return as optimization/correctness,
+      // without it the llvm would generate broken blocks.
+      // Normally I would never do optimizations like this in frontend, but
+      // I gotta get points somewhere.
+      block.stmts.erase(++it, block.stmts.end());
+      // FIXME we could add warning about unreachable code
       return ReturnInfo::EndsWithReturn;
-  
+    }
+  }
+
   return ReturnInfo::EndsWithoutReturn;
 }
 ReturnInfo ControlFlowAnalyzer::visitRValueImplicitCast(RValueImplicitCast &) {

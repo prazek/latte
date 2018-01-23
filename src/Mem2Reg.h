@@ -1,19 +1,11 @@
 #pragma once
-#include "llvm/Pass.h"
-#include "llvm/IR/BasicBlock.h"
-#include "llvm/IR/Instructions.h"
+#include "BasicModulePass.h"
 
-
-
-
-class Mem2Reg : llvm::ModulePass {
-  static char ID;
-public:
-  Mem2Reg() : llvm::ModulePass(ID) {}
-  bool runOnModule(llvm::Module &M) override;
-
+/// This class removes allocas with loads and stores to them
+/// and transform IR to SSA.
+class Mem2Reg : public BasicModulePass {
 private:
-  bool runOnFunction(llvm::Function &F);
+  bool runOnFunction(llvm::Function &F) override;
   bool processBlock(llvm::BasicBlock &bb, llvm::BasicBlock *predecessor);
 
 

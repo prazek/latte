@@ -18,6 +18,7 @@ Implemented optimizations:
 - removing unnecessary allocas and using SSA (Mem2Reg pass)
 - devirtualization (using invariant.groups)
 - constant folding
+- DCE
 
 
 Implemented extensions:

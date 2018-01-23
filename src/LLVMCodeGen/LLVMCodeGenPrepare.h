@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Frontend/ASTVisitor.h"
+#include "../Frontend/ASTVisitor.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/Module.h"
 
